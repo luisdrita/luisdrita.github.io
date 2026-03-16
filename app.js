@@ -2,7 +2,6 @@ const API_BASE = "https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb";
 const SPAIN_API_URL =
   "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/";
 const DEFAULT_FUEL_ID = "2101";
-const AUTO_REFRESH_MS = 300000;
 const ALTERNATIVE_LIMIT = 3;
 const MAX_PORTUGAL_STATIONS = 10000;
 const LOCATION_ERROR_CODES = {
@@ -41,7 +40,6 @@ const state = {
 
 const elements = {
   fuelSelect: document.querySelector("#fuel-select"),
-  refreshButton: document.querySelector("#refresh-button"),
   locateButton: document.querySelector("#locate-button"),
   retryLocationButton: document.querySelector("#retry-location-button"),
   locationStatus: document.querySelector("#location-status"),
@@ -938,20 +936,13 @@ function bindEvents() {
     await refreshDashboard(true);
   });
 
-  elements.refreshButton.addEventListener("click", async () => {
-    await refreshDashboard(true);
-  });
-
   elements.locateButton.addEventListener("click", requestLocation);
   elements.retryLocationButton.addEventListener("click", requestLocation);
-
-  window.setInterval(() => {
-    refreshDashboard(true);
-  }, AUTO_REFRESH_MS);
 }
 
 async function init() {
   bindEvents();
+  void requestLocation();
 
   try {
     state.fuelTypes = await fetchFuelTypes();
@@ -965,8 +956,7 @@ async function init() {
     }
 
     populateFuelSelect();
-    void requestLocation();
-    await refreshDashboard(true);
+    await refreshDashboard();
   } catch (error) {
     setLoadStatus(error.message, true);
     updateLocationStatus("Nao foi possivel preparar a pesquisa automática.", true);

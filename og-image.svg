@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Preços de Combustíveis em Portugal">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#082831" />
+      <stop offset="100%" stop-color="#031015" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffb84d" />
+      <stop offset="100%" stop-color="#7fd1b9" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1040" cy="120" r="160" fill="#ffb84d" opacity="0.12" />
+  <circle cx="180" cy="520" r="180" fill="#7fd1b9" opacity="0.12" />
+  <rect x="80" y="90" width="1040" height="450" rx="36" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.12" />
+  <text x="120" y="185" fill="#ffb84d" font-family="Sora, Arial, sans-serif" font-size="28" font-weight="600" letter-spacing="4">PREÇOS DE COMBUSTÍVEIS EM PORTUGAL</text>
+  <text x="120" y="280" fill="#f5efe2" font-family="Sora, Arial, sans-serif" font-size="64" font-weight="700">Postos mais baratos</text>
+  <text x="120" y="355" fill="#f5efe2" font-family="Sora, Arial, sans-serif" font-size="64" font-weight="700">de gasóleo e gasolina</text>
+  <text x="120" y="430" fill="#b9c5bf" font-family="Work Sans, Arial, sans-serif" font-size="30">Dados oficiais da DGEG, pesquisa por localização e ligação direta ao Google Maps.</text>
+  <rect x="120" y="470" width="270" height="18" rx="9" fill="url(#accent)" />
+</svg>

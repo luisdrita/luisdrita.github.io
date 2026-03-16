@@ -3,11 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radar Gasóleo</title>
+    <title>Preços de Combustíveis em Portugal | Postos Mais Baratos</title>
     <meta
       name="description"
-      content="Dashboard simples para encontrar os postos com combustíveis mais baratos em Portugal com base na localização atual do utilizador."
+      content="Compare preços oficiais de combustíveis em Portugal. Encontre postos mais baratos de gasóleo, gasolina 95, gasolina 98 e GPL Auto perto de si com dados da DGEG e ligação direta ao Google Maps."
     />
+    <meta
+      name="robots"
+      content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
+    />
+    <meta
+      name="googlebot"
+      content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
+    />
+    <meta name="author" content="Luís Rita" />
+    <meta name="theme-color" content="#061d24" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="canonical" href="https://luisdrita.github.io/" />
+    <link rel="alternate" hreflang="pt-PT" href="https://luisdrita.github.io/" />
+    <link rel="alternate" hreflang="x-default" href="https://luisdrita.github.io/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Preços de Combustíveis em Portugal" />
+    <meta
+      property="og:title"
+      content="Preços de Combustíveis em Portugal | Postos Mais Baratos"
+    />
+    <meta
+      property="og:description"
+      content="Compare postos mais baratos de gasóleo e gasolina em Portugal com dados oficiais da DGEG e abra cada estação diretamente no Google Maps."
+    />
+    <meta property="og:url" content="https://luisdrita.github.io/" />
+    <meta property="og:image" content="https://luisdrita.github.io/og-image.svg" />
+    <meta property="og:image:alt" content="Dashboard de preços de combustíveis em Portugal" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Preços de Combustíveis em Portugal | Postos Mais Baratos"
+    />
+    <meta
+      name="twitter:description"
+      content="Encontre os postos mais baratos de gasóleo e gasolina em Portugal com dados oficiais da DGEG."
+    />
+    <meta name="twitter:image" content="https://luisdrita.github.io/og-image.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,6 +54,42 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Preços de Combustíveis em Portugal",
+        "url": "https://luisdrita.github.io/",
+        "inLanguage": "pt-PT",
+        "description": "Comparador de preços oficiais de combustíveis em Portugal com dados da DGEG."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Preços de Combustíveis em Portugal",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "isAccessibleForFree": true,
+        "url": "https://luisdrita.github.io/",
+        "inLanguage": "pt-PT",
+        "description": "Aplicação web para comparar postos mais baratos de gasóleo, gasolina e GPL Auto em Portugal com dados oficiais da DGEG.",
+        "browserRequirements": "Requer navegador com JavaScript; geolocalização opcional para ordenar postos próximos.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        "featureList": [
+          "Preços oficiais da DGEG",
+          "Postos mais baratos em Portugal",
+          "Pesquisa por localização atual",
+          "Ligação direta ao Google Maps",
+          "Compatível com telemóvel"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div class="page-shell">
@@ -23,11 +98,12 @@
 
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Portugal · DGEG em direto</p>
-          <h1>Veja onde o combustível está mais barato perto de si.</h1>
+          <p class="eyebrow">Preços de combustíveis em Portugal</p>
+          <h1>Encontre os postos de combustível mais baratos perto de si.</h1>
           <p class="hero-text">
-            Consulte rapidamente os melhores preços oficiais em Portugal e abra
-            qualquer posto diretamente no Google Maps.
+            Compare preços oficiais de gasóleo simples, gasolina simples 95,
+            gasolina 98, GPL Auto e outros combustíveis em Portugal com dados
+            públicos da DGEG.
           </p>
         </div>
 
@@ -67,6 +143,17 @@
       </header>
 
       <main class="dashboard">
+        <noscript>
+          <section class="card noscript-card">
+            <h2>Preços de combustíveis em Portugal</h2>
+            <p>
+              Esta aplicação precisa de JavaScript para carregar os preços mais
+              recentes da DGEG. Pode consultar a fonte oficial em
+              <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>.
+            </p>
+          </section>
+        </noscript>
+
         <section class="stats-grid" aria-label="Resumo">
           <article class="stat-card">
             <p class="stat-label">Mais barato em Portugal</p>
@@ -138,12 +225,37 @@
             <div class="section-head">
               <div>
                 <p class="section-kicker">Referência nacional</p>
-                <h2>Top 5 no país</h2>
+                <h2>Top 5 de postos mais baratos em Portugal</h2>
               </div>
               <p id="updated-at" class="section-note">Sem atualização</p>
             </div>
             <div id="national-list" class="compact-list"></div>
           </section>
+        </section>
+
+        <section class="card seo-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Pesquisa nacional</p>
+              <h2>Preços de gasóleo, gasolina e GPL Auto em Portugal</h2>
+            </div>
+          </div>
+          <p class="seo-copy">
+            O comparador reúne preços oficiais de combustíveis em postos de
+            abastecimento por todo o país, incluindo pesquisas úteis para
+            Lisboa, Porto, Braga, Coimbra, Faro, Setúbal, Aveiro, Leiria e
+            outros distritos disponibilizados pela DGEG.
+          </p>
+          <div class="keyword-pills" aria-label="Combustíveis pesquisáveis">
+            <span>Gasóleo simples</span>
+            <span>Gasóleo especial</span>
+            <span>Gasolina simples 95</span>
+            <span>Gasolina 98</span>
+            <span>GPL Auto</span>
+            <span>Postos mais baratos</span>
+            <span>Combustível perto de mim</span>
+            <span>DGEG</span>
+          </div>
         </section>
       </main>
 
@@ -152,8 +264,8 @@
           Dados: <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>
         </p>
         <p>
-          Para ativar a geolocalização, abra esta página em
-          <code>http://localhost</code> ou num domínio HTTPS.
+          A geolocalização funciona em HTTPS e pode ser usada diretamente nesta
+          versão pública do site.
         </p>
       </footer>
     </div>

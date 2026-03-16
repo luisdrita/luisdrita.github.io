@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Preços de Combustíveis em Portugal">
+  <defs>
+    <linearGradient id="fuelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb84d" />
+      <stop offset="100%" stop-color="#7fd1b9" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#061d24" />
+  <path d="M22 16h16a6 6 0 0 1 6 6v26H20V18a2 2 0 0 1 2-2Z" fill="url(#fuelGradient)" />
+  <rect x="25" y="21" width="14" height="8" rx="2" fill="#061d24" opacity="0.9" />
+  <path d="M44 25h4a4 4 0 0 1 4 4v10a6 6 0 0 1-6 6h-1" fill="none" stroke="#f5efe2" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" />
+  <path d="M26 52c7-1 12-5 14-12" fill="none" stroke="#f5efe2" stroke-linecap="round" stroke-width="4" />
+</svg>

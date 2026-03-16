@@ -27,6 +27,7 @@ const elements = {
   retryLocationButton: document.querySelector("#retry-location-button"),
   locationStatus: document.querySelector("#location-status"),
   loadStatus: document.querySelector("#load-status"),
+  closestLoading: document.querySelector("#closest-loading"),
   nationalPrice: document.querySelector("#national-price"),
   nationalName: document.querySelector("#national-name"),
   closestName: document.querySelector("#closest-name"),
@@ -43,6 +44,12 @@ const elements = {
 function setLoadStatus(message, isError = false) {
   elements.loadStatus.textContent = message;
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
+}
+
+function setClosestLoading(isLoading, message = "A procurar os postos mais próximos...") {
+  elements.closestLoading.hidden = !isLoading;
+  elements.closestLoading.setAttribute("aria-hidden", String(!isLoading));
+  elements.closestLoading.querySelector("span:last-child").textContent = message;
 }
 
 function updateLocationStatus(message, isError = false) {
@@ -523,6 +530,10 @@ async function refreshDashboard(forceRefresh = false) {
   const selectedFuel = state.fuelTypes.find((fuel) => String(fuel.Id) === state.selectedFuelId);
   const fuelLabel = selectedFuel?.Descritivo ?? "combustível selecionado";
   setLoadStatus(`A atualizar dados da DGEG para ${fuelLabel.toLowerCase()}...`);
+  setClosestLoading(
+    Boolean(state.location),
+    `A ordenar postos mais próximos para ${fuelLabel.toLowerCase()}...`,
+  );
 
   try {
     const portugalStations = await loadStations(forceRefresh);
@@ -549,6 +560,8 @@ async function refreshDashboard(forceRefresh = false) {
     );
   } catch (error) {
     setLoadStatus(error.message, true);
+  } finally {
+    setClosestLoading(false);
   }
 }
 
@@ -566,6 +579,7 @@ function requestLocation() {
 
   updateLocationStatus("A pedir acesso à sua localização...");
   setLocateButtonLabel("A obter localização...");
+  setClosestLoading(true, "A obter a sua localização...");
 
   navigator.geolocation.getCurrentPosition(
     async ({ coords }) => {
@@ -586,6 +600,7 @@ function requestLocation() {
       updateLocationStatus(reason, true);
       setLocateButtonLabel("Permitir localização");
       renderClosestPlaceholder("Permita a localização");
+      setClosestLoading(false);
     },
     {
       enableHighAccuracy: true,

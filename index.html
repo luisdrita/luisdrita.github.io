@@ -146,6 +146,16 @@
         <section class="closest-card" aria-label="Posto mais próximo">
           <article class="closest-main">
             <p class="section-kicker">Sugestão imediata</p>
+            <div
+              id="closest-loading"
+              class="closest-loading"
+              aria-live="polite"
+              aria-hidden="true"
+              hidden
+            >
+              <span class="loading-dot" aria-hidden="true"></span>
+              <span>A procurar os postos mais próximos...</span>
+            </div>
             <h2 class="closest-heading">
               <a
                 id="closest-name"
@@ -247,9 +257,6 @@
       <footer class="footer">
         <p>
           Dados: <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>
-        </p>
-        <p>
-          Compatível com telemóvel e geolocalização em HTTPS.
         </p>
       </footer>
     </div>

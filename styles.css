@@ -255,6 +255,27 @@ button:focus,
     var(--panel-strong);
 }
 
+.closest-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.loading-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pulseDot 1s ease-in-out infinite;
+}
+
 .closest-heading {
   margin: 0;
 }
@@ -457,6 +478,19 @@ button:focus,
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @media (min-width: 720px) {

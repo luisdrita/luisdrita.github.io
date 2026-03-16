@@ -117,7 +117,26 @@ function formatStationUpdated(value) {
     return "Sem data";
   }
 
-  return value;
+  const normalizedValue = `${value}`.trim();
+  const isoMatch = normalizedValue.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/,
+  );
+
+  if (isoMatch) {
+    const [, year, month, day, hours, minutes] = isoMatch;
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  const localMatch = normalizedValue.match(
+    /^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2})(?::\d{2})?$/,
+  );
+
+  if (localMatch) {
+    const [, day, month, year, hours, minutes] = localMatch;
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  return normalizedValue.replace(/:\d{2}$/, "");
 }
 
 function formatPortugalWorkingHours(schedule) {
@@ -199,7 +218,7 @@ function formatSpainWorkingHours(value) {
 function formatFetchedAt(date) {
   return new Intl.DateTimeFormat("pt-PT", {
     dateStyle: "short",
-    timeStyle: "medium",
+    timeStyle: "short",
   }).format(date);
 }
 
@@ -580,17 +599,37 @@ async function resolveBrowserLocation() {
 }
 
 async function fetchStationsForFuel(fuelId) {
-  const fullResult = await fetchJson("/PesquisarPostos", {
+  const initialResult = await fetchJson("/PesquisarPostos", {
     idsTiposComb: fuelId,
     qtdPorPagina: MAX_PORTUGAL_STATIONS,
     pagina: 1,
   });
 
-  if (!fullResult.status) {
+  if (!initialResult.status) {
     throw new Error("A DGEG não devolveu resultados válidos.");
   }
 
-  return fullResult.resultado
+  const totalAvailable =
+    initialResult.resultado?.[0]?.Quantidade ?? initialResult.resultado?.length ?? 0;
+  const needsExpandedFetch = totalAvailable > (initialResult.resultado?.length ?? 0);
+
+  if (!needsExpandedFetch) {
+    return initialResult.resultado
+      .map(stationFromApi)
+      .filter((station) => Number.isFinite(station.priceValue));
+  }
+
+  const completeResult = await fetchJson("/PesquisarPostos", {
+    idsTiposComb: fuelId,
+    qtdPorPagina: totalAvailable,
+    pagina: 1,
+  });
+
+  if (!completeResult.status) {
+    throw new Error("A DGEG não devolveu a lista completa de postos.");
+  }
+
+  return completeResult.resultado
     .map(stationFromApi)
     .filter((station) => Number.isFinite(station.priceValue));
 }

@@ -41,13 +41,16 @@ const state = {
 const elements = {
   fuelSelect: document.querySelector("#fuel-select"),
   locateButton: document.querySelector("#locate-button"),
+  locateButtonLabel: document.querySelector("#locate-button-label"),
   retryLocationButton: document.querySelector("#retry-location-button"),
+  retryLocationButtonLabel: document.querySelector("#retry-location-button-label"),
   locationStatus: document.querySelector("#location-status"),
   loadStatus: document.querySelector("#load-status"),
   closestLoading: document.querySelector("#closest-loading"),
   nationalPrice: document.querySelector("#national-price"),
   nationalName: document.querySelector("#national-name"),
   closestName: document.querySelector("#closest-name"),
+  closestCountry: document.querySelector("#closest-country"),
   closestDistance: document.querySelector("#closest-distance"),
   closestPrice: document.querySelector("#closest-price"),
   closestUpdated: document.querySelector("#closest-updated"),
@@ -64,7 +67,7 @@ function setLoadStatus(message, isError = false) {
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
 }
 
-function setClosestLoading(isLoading, message = "A procurar os postos mais próximos...") {
+function setClosestLoading(isLoading, message = "A comparar os postos mais próximos e mais baratos...") {
   elements.closestLoading.hidden = !isLoading;
   elements.closestLoading.setAttribute("aria-hidden", String(!isLoading));
   elements.closestLoading.querySelector("span:last-child").textContent = message;
@@ -76,8 +79,8 @@ function updateLocationStatus(message, isError = false) {
 }
 
 function setLocateButtonLabel(label) {
-  elements.locateButton.textContent = label;
-  elements.retryLocationButton.textContent = label;
+  elements.locateButtonLabel.textContent = label;
+  elements.retryLocationButtonLabel.textContent = label;
 }
 
 function formatCurrency(value) {
@@ -204,8 +207,43 @@ function isActiveRefresh(requestId, requestedFuelId) {
   return requestId === state.refreshRequestId && requestedFuelId === state.selectedFuelId;
 }
 
+function getCountryLabel(country) {
+  if (country === "Portugal") {
+    return "Portugal";
+  }
+
+  if (country === "Espanha" || country === "España") {
+    return "Espanha";
+  }
+
+  return "Portugal ou Espanha";
+}
+
+function setCountryPill(element, country) {
+  element.textContent = getCountryLabel(country);
+  element.classList.remove("is-portugal", "is-spain", "is-neutral");
+
+  if (country === "Portugal") {
+    element.classList.add("is-portugal");
+    return;
+  }
+
+  if (country === "Espanha" || country === "España") {
+    element.classList.add("is-spain");
+    return;
+  }
+
+  element.classList.add("is-neutral");
+}
+
 function buildAddress(station) {
-  const parts = [station.Morada, station.Localidade, station.Municipio, station.Distrito, station.Country]
+  const parts = [
+    station.Morada,
+    station.Localidade,
+    station.Municipio,
+    station.Distrito,
+    getCountryLabel(station.Country),
+  ]
     .filter((part) => part !== null && part !== undefined && `${part}`.trim() !== "")
     .map((part) => `${part}`.trim());
 
@@ -438,7 +476,7 @@ function buildSpainStation(rawStation, index, fuelConfig, sourceTimestamp) {
     CodPostal: sanitizeText(rawStation["C.P."]),
     Latitude: parseSpainCoordinate(rawStation.Latitud),
     Longitude: parseSpainCoordinate(rawStation["Longitud (WGS84)"]),
-    Country: "España",
+    Country: "Espanha",
     WorkingHours: formatSpainWorkingHours(rawStation.Horario),
     priceValue: parsePrice(rawStation[priceField]),
   };
@@ -626,10 +664,12 @@ function populateFuelSelect() {
 
 function renderClosestPlaceholder(message) {
   setActionLink(elements.closestName, null, message);
+  setCountryPill(elements.closestCountry, null);
   elements.closestDistance.textContent = "--";
   elements.closestPrice.textContent = "--";
   elements.closestUpdated.textContent = "--";
-  elements.closestAddress.textContent = "Partilhe a localização para abrir o posto recomendado no Google Maps.";
+  elements.closestAddress.textContent =
+    "Autorize a sua localização para comparar postos em Portugal e Espanha e abrir a melhor opção no Google Maps.";
   setClosestHours(null);
   setMapsButton(null);
 }
@@ -637,7 +677,7 @@ function renderClosestPlaceholder(message) {
 function renderNationalSnapshot(stations) {
   const cheapestNational = findCheapestStation(stations);
   elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
-  setActionLink(elements.nationalName, cheapestNational, "Sem dados");
+  setActionLink(elements.nationalName, cheapestNational, "Sem posto disponível");
 }
 
 function renderNearbyList(stations) {
@@ -645,16 +685,17 @@ function renderNearbyList(stations) {
 
   if (!stations.length) {
     elements.nearbyList.innerHTML =
-      '<p class="empty-state">Sem alternativas adicionais. O posto sugerido já e o mais próximo encontrado.</p>';
+      '<p class="empty-state">Não encontrámos mais alternativas relevantes perto de si. O posto sugerido já é a melhor opção imediata.</p>';
     return;
   }
 
   stations.forEach((station) => {
     const fragment = elements.stationTemplate.content.cloneNode(true);
+    setCountryPill(fragment.querySelector(".station-country"), station.Country);
     fragment.querySelector(".station-name-link").textContent = station.Nome;
     fragment.querySelector(".station-name-link").href = buildMapLink(station);
     fragment.querySelector(".station-address").textContent = buildAddress(station);
-    fragment.querySelector(".station-distance").textContent = formatDistance(station.distanceKm);
+    fragment.querySelector(".station-distance").textContent = `A ${formatDistance(station.distanceKm)}`;
     fragment.querySelector(".station-price").textContent = formatCurrency(station.priceValue);
     const hoursElement = fragment.querySelector(".station-hours");
     hoursElement.dataset.stationId = station.Id;
@@ -666,10 +707,11 @@ function renderNearbyList(stations) {
 
 function renderWithoutLocation(stations) {
   renderNationalSnapshot(stations);
-  renderClosestPlaceholder("A aguardar localização");
-  elements.resultsSummary.textContent = "Permita a localização para recomendar o posto mais próximo";
+  renderClosestPlaceholder("Aguardamos a sua localização");
+  elements.resultsSummary.textContent =
+    "Ative a localização para comparar postos próximos em Portugal e Espanha";
   elements.nearbyList.innerHTML =
-    '<p class="empty-state">Assim que permitir a localização mostramos aqui mais postos próximos.</p>';
+    '<p class="empty-state">Assim que permitir a localização mostramos aqui os postos mais próximos e mais baratos perto de si.</p>';
 }
 
 function renderWithLocation(stations) {
@@ -680,22 +722,23 @@ function renderWithLocation(stations) {
   renderNationalSnapshot(stations);
 
   if (!closestStation) {
-    renderClosestPlaceholder("Nenhum posto com coordenadas disponíveis");
-    elements.resultsSummary.textContent = "Nao foi possivel calcular postos proximos";
+    renderClosestPlaceholder("Sem posto recomendado de momento");
+    elements.resultsSummary.textContent = "Não foi possível ordenar os postos próximos";
     elements.nearbyList.innerHTML =
-      '<p class="empty-state">A DGEG não devolveu coordenadas suficientes para este combustível.</p>';
+      '<p class="empty-state">Os serviços oficiais não devolveram coordenadas suficientes para recomendar postos para este combustível.</p>';
     return;
   }
 
   setActionLink(elements.closestName, closestStation, closestStation.Nome);
-  elements.closestDistance.textContent = formatDistance(closestStation.distanceKm);
+  setCountryPill(elements.closestCountry, closestStation.Country);
+  elements.closestDistance.textContent = `A ${formatDistance(closestStation.distanceKm)} de si`;
   elements.closestPrice.textContent = formatCurrency(closestStation.priceValue);
   elements.closestUpdated.textContent = formatStationUpdated(closestStation.DataAtualizacao);
   elements.closestAddress.textContent = buildAddress(closestStation);
   setClosestHours(closestStation, "Horário: a carregar...");
   setMapsButton(closestStation);
 
-  elements.resultsSummary.textContent = `${Math.max(eligibleCount - 1, 0)} alternativas encontradas perto de si`;
+  elements.resultsSummary.textContent = `${Math.max(eligibleCount - 1, 0)} postos adicionais ordenados por proximidade`;
   renderNearbyList(alternatives);
   void ensureWorkingHoursForVisibleStations([closestStation, ...alternatives]);
 }
@@ -805,10 +848,10 @@ async function refreshDashboard(forceRefresh = false) {
   const requestedFuelId = state.selectedFuelId;
   const requestId = state.refreshRequestId + 1;
   state.refreshRequestId = requestId;
-  setLoadStatus(`A atualizar dados da DGEG para ${fuelLabel.toLowerCase()}...`);
+  setLoadStatus(`A carregar preços oficiais para ${fuelLabel.toLowerCase()}...`);
   setClosestLoading(
     Boolean(state.location),
-    `A ordenar postos mais próximos para ${fuelLabel.toLowerCase()}...`,
+    `A comparar distância e preço para ${fuelLabel.toLowerCase()}...`,
   );
 
   try {
@@ -851,7 +894,7 @@ async function refreshDashboard(forceRefresh = false) {
 
     const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : "agora";
     setLoadStatus(
-      `Dados oficiais atualizados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
+      `Preços oficiais carregados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
     );
   } catch (error) {
     if (isActiveRefresh(requestId, requestedFuelId)) {
@@ -896,7 +939,7 @@ async function requestLocation() {
 
   updateLocationStatus(
     permissionState === "granted"
-      ? "A obter a sua localização..."
+      ? "A obter a sua localização para ordenar os postos..."
       : "A pedir acesso à sua localização...",
   );
   setLocateButtonLabel("A obter localização...");
@@ -914,7 +957,7 @@ async function requestLocation() {
       longitude: coords.longitude,
     };
 
-    updateLocationStatus("Localização ativa. A ordenar postos mais próximos.");
+    updateLocationStatus("Localização ativa. A ordenar os postos por distância e preço.");
     setLocateButtonLabel("Atualizar localização");
     await refreshDashboard();
   } catch (error) {

@@ -34,6 +34,26 @@ a {
   color: inherit;
 }
 
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.35;
+}
+
 .page-shell {
   position: relative;
   overflow: hidden;
@@ -121,6 +141,32 @@ h1 {
   max-width: 52ch;
   color: var(--muted);
   line-height: 1.58;
+}
+
+.hero-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.info-chip,
+.country-pill,
+.inline-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.info-chip {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 0.92rem;
 }
 
 .hero-panel {
@@ -282,6 +328,13 @@ button:focus,
   margin: 0;
 }
 
+.closest-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .closest-name {
   color: var(--text);
   font-size: clamp(1.5rem, 6vw, 2.25rem);
@@ -299,6 +352,35 @@ button:focus,
   color: var(--accent);
   font-size: 1.15rem;
   font-weight: 600;
+}
+
+.inline-note {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.country-pill {
+  font-family: "Sora", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.country-pill.is-portugal {
+  color: #9fe0c8;
+  background: rgba(127, 209, 185, 0.12);
+}
+
+.country-pill.is-spain {
+  color: #ffd08b;
+  background: rgba(255, 184, 77, 0.12);
+}
+
+.country-pill.is-neutral {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .primary-metrics {
@@ -341,6 +423,12 @@ button:focus,
 .compact-card .stat-value {
   margin: 0;
   font-size: 1.6rem;
+}
+
+.stat-scope {
+  margin: -2px 0 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .stat-link {
@@ -396,6 +484,10 @@ button:focus,
 
 .station-topline h3 {
   margin: 0;
+}
+
+.station-meta {
+  margin-bottom: 10px;
 }
 
 .station-name-link {

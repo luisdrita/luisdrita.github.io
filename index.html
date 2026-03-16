@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preços de Combustíveis em Portugal | Postos Mais Baratos</title>
+    <title>Postos de Combustível Mais Próximos e Mais Baratos | Portugal e Espanha</title>
     <meta
       name="description"
-      content="Compare preços oficiais de combustíveis em Portugal. Encontre postos mais baratos de gasóleo, gasolina 95, gasolina 98 e GPL Auto perto de si com dados da DGEG e ligação direta ao Google Maps."
+      content="Encontre os postos de combustível mais próximos e mais baratos com preços oficiais de Portugal e postos em Espanha perto da fronteira. Abra a melhor opção diretamente no Google Maps."
     />
     <meta
       name="robots"
@@ -25,26 +25,26 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <meta property="og:locale" content="pt_PT" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Preços de Combustíveis em Portugal" />
+    <meta property="og:site_name" content="Postos de Combustível Mais Próximos" />
     <meta
       property="og:title"
-      content="Preços de Combustíveis em Portugal | Postos Mais Baratos"
+      content="Postos de Combustível Mais Próximos e Mais Baratos | Portugal e Espanha"
     />
     <meta
       property="og:description"
-      content="Compare postos mais baratos de gasóleo e gasolina em Portugal com dados oficiais da DGEG e abra cada estação diretamente no Google Maps."
+      content="Compare distância e preço oficial dos postos mais próximos em Portugal e também em Espanha junto à fronteira."
     />
     <meta property="og:url" content="https://luisdrita.github.io/" />
     <meta property="og:image" content="https://luisdrita.github.io/og-image.svg" />
-    <meta property="og:image:alt" content="Dashboard de preços de combustíveis em Portugal" />
+    <meta property="og:image:alt" content="Comparador de postos de combustível próximos em Portugal e Espanha" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="Preços de Combustíveis em Portugal | Postos Mais Baratos"
+      content="Postos de Combustível Mais Próximos e Mais Baratos | Portugal e Espanha"
     />
     <meta
       name="twitter:description"
-      content="Encontre os postos mais baratos de gasóleo e gasolina em Portugal com dados oficiais da DGEG."
+      content="Veja os postos mais próximos e mais baratos em Portugal e em Espanha perto da fronteira com dados oficiais."
     />
     <meta name="twitter:image" content="https://luisdrita.github.io/og-image.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -58,23 +58,23 @@
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "Preços de Combustíveis em Portugal",
+        "name": "Postos de Combustível Mais Próximos",
         "url": "https://luisdrita.github.io/",
         "inLanguage": "pt-PT",
-        "description": "Comparador de preços oficiais de combustíveis em Portugal com dados da DGEG."
+        "description": "Comparador de postos de combustível mais próximos e mais baratos em Portugal e Espanha junto à fronteira."
       }
     </script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Preços de Combustíveis em Portugal",
+        "name": "Postos de Combustível Mais Próximos",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Any",
         "isAccessibleForFree": true,
         "url": "https://luisdrita.github.io/",
         "inLanguage": "pt-PT",
-        "description": "Aplicação web para comparar postos mais baratos de gasóleo, gasolina e GPL Auto em Portugal com dados oficiais da DGEG.",
+        "description": "Aplicação web para comparar postos de combustível mais próximos e mais baratos em Portugal e em Espanha perto da fronteira.",
         "browserRequirements": "Requer navegador com JavaScript; geolocalização opcional para ordenar postos próximos.",
         "offers": {
           "@type": "Offer",
@@ -82,8 +82,8 @@
           "priceCurrency": "EUR"
         },
         "featureList": [
-          "Preços oficiais da DGEG",
-          "Postos mais baratos em Portugal",
+          "Preços oficiais de Portugal e Espanha",
+          "Postos mais próximos e mais baratos",
           "Pesquisa por localização atual",
           "Ligação direta ao Google Maps",
           "Compatível com telemóvel"
@@ -92,30 +92,83 @@
     </script>
   </head>
   <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-fuel" viewBox="0 0 24 24">
+        <path d="M6 21v-9a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+        <path d="M7 10V5.5A2.5 2.5 0 0 1 9.5 3h2A2.5 2.5 0 0 1 14 5.5V10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+        <path d="M14 7h2.2a1 1 0 0 1 .76.35l2.04 2.38a1.98 1.98 0 0 1 .48 1.3V16a2 2 0 0 1-4 0v-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24">
+        <path d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+        <circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-route" viewBox="0 0 24 24">
+        <circle cx="6" cy="18" r="2" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <circle cx="18" cy="6" r="2" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="M8 18h2.5a4 4 0 0 0 4-4v-4a4 4 0 0 1 4-4H20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-euro" viewBox="0 0 24 24">
+        <path d="M15.5 6.5a5 5 0 1 0 0 11" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+        <path d="M6.5 10.5H15M6.5 13.5H14.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-border" viewBox="0 0 24 24">
+        <path d="M6 19V5M6 5h5l2 2h5v12h-5l-2-2H6Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="M12 8v4l3 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-map" viewBox="0 0 24 24">
+        <path d="m9 18-5 2V6l5-2 6 2 5-2v14l-5 2-6-2Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+        <path d="M9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+    </svg>
     <div class="page-shell">
       <div class="ambient ambient-left"></div>
       <div class="ambient ambient-right"></div>
 
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Preços de combustíveis em Portugal</p>
-          <h1>Abra o posto de combustível mais próximo em segundos.</h1>
+          <p class="eyebrow">Postos mais próximos e mais baratos</p>
+          <h1>Encontre rapidamente o melhor posto perto de si.</h1>
           <p class="hero-text">
-            Assim que a página abre, pedimos a sua localização e mostramos o
-            posto mais próximo para o combustível escolhido, com preço por litro
-            e data oficial em Portugal ou Espanha.
+            Ordenamos os postos pelo que realmente interessa: distância e preço
+            oficial por litro. Incluímos postos em Portugal e também em Espanha
+            quando estiver perto da fronteira.
           </p>
+          <div class="hero-highlights" aria-label="Principais vantagens">
+            <span class="info-chip">
+              <svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg>
+              Mais próximos
+            </span>
+            <span class="info-chip">
+              <svg class="icon" aria-hidden="true"><use href="#icon-euro"></use></svg>
+              Mais baratos
+            </span>
+            <span class="info-chip">
+              <svg class="icon" aria-hidden="true"><use href="#icon-border"></use></svg>
+              Portugal + Espanha
+            </span>
+          </div>
         </div>
 
         <div class="hero-panel">
           <div class="panel-row">
-            <label for="fuel-select">Combustível</label>
+            <label for="fuel-select">
+              <span class="icon-label">
+                <svg class="icon" aria-hidden="true"><use href="#icon-fuel"></use></svg>
+                Combustível a comparar
+              </span>
+            </label>
             <select id="fuel-select" aria-label="Selecionar combustível"></select>
           </div>
 
           <div class="panel-actions">
             <button id="locate-button" class="primary-button" type="button">
-              Partilhar localização
+              <span class="icon-label">
+                <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg>
+                <span id="locate-button-label">Usar a minha localização</span>
+              </span>
             </button>
           </div>
 
@@ -131,10 +184,10 @@
       <main class="dashboard">
         <noscript>
           <section class="card noscript-card">
-            <h2>Preços de combustíveis em Portugal</h2>
+            <h2>Postos de combustível com preços oficiais</h2>
             <p>
               Esta aplicação precisa de JavaScript para carregar os preços mais
-              recentes da DGEG. Pode consultar a fonte oficial em
+              recentes de Portugal e Espanha. Pode consultar a fonte oficial em
               <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>.
             </p>
           </section>
@@ -142,7 +195,12 @@
 
         <section class="closest-card" aria-label="Posto mais próximo">
           <article class="closest-main">
-            <p class="section-kicker">Sugestão imediata</p>
+            <p class="section-kicker">
+              <span class="icon-label">
+                <svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg>
+                Sugestão principal
+              </span>
+            </p>
             <div
               id="closest-loading"
               class="closest-loading"
@@ -151,7 +209,7 @@
               hidden
             >
               <span class="loading-dot" aria-hidden="true"></span>
-              <span>A procurar os postos mais próximos...</span>
+              <span>A comparar postos próximos e preços oficiais...</span>
             </div>
             <h2 class="closest-heading">
               <a
@@ -162,22 +220,40 @@
                 rel="noreferrer"
                 aria-disabled="true"
               >
-                A aguardar localização
+                À espera da sua localização
               </a>
             </h2>
+            <div class="closest-context">
+              <span id="closest-country" class="country-pill is-neutral">Portugal ou Espanha</span>
+              <span class="inline-note">
+                <svg class="icon" aria-hidden="true"><use href="#icon-border"></use></svg>
+                Espanha entra automaticamente quando estiver perto da fronteira
+              </span>
+            </div>
             <p id="closest-distance" class="closest-distance">--</p>
             <div class="primary-metrics">
               <article class="metric-card">
-                <p class="metric-label">Preço por litro</p>
+                <p class="metric-label">
+                  <span class="icon-label">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-euro"></use></svg>
+                    Preço por litro
+                  </span>
+                </p>
                 <p id="closest-price" class="metric-value">--</p>
               </article>
               <article class="metric-card">
-                <p class="metric-label">Atualização oficial</p>
+                <p class="metric-label">
+                  <span class="icon-label">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-clock"></use></svg>
+                    Atualização oficial
+                  </span>
+                </p>
                 <p id="closest-updated" class="metric-value small-value">--</p>
               </article>
             </div>
             <p id="closest-address" class="closest-address">
-              Assim que autorizar a localização mostramos o posto mais próximo.
+              Quando autorizar a localização mostramos a melhor opção perto de si
+              em Portugal ou Espanha.
             </p>
             <p id="closest-hours" class="closest-hours">Horário: --</p>
             <div class="primary-actions">
@@ -189,16 +265,28 @@
                 rel="noreferrer"
                 aria-disabled="true"
               >
-                Abrir no Google Maps
+                <span class="icon-label">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-map"></use></svg>
+                  Abrir no Google Maps
+                </span>
               </a>
               <button id="retry-location-button" class="ghost-button" type="button">
-                Voltar a pedir localização
+                <span class="icon-label">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg>
+                  <span id="retry-location-button-label">Pedir localização novamente</span>
+                </span>
               </button>
             </div>
           </article>
 
           <article class="card compact-card">
-            <p class="stat-label">Melhor preço disponível</p>
+            <p class="stat-label">
+              <span class="icon-label">
+                <svg class="icon" aria-hidden="true"><use href="#icon-euro"></use></svg>
+                Melhor preço encontrado
+              </span>
+            </p>
+            <p class="stat-scope">Portugal e Espanha quando aplicável</p>
             <p id="national-price" class="stat-value">--</p>
             <a
               id="national-name"
@@ -216,11 +304,16 @@
         <section class="card alternatives-card">
           <div class="section-head">
             <div>
-              <p class="section-kicker">Alternativas rápidas</p>
-              <h2>Mais postos próximos</h2>
+              <p class="section-kicker">
+                <span class="icon-label">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg>
+                  Alternativas próximas
+                </span>
+              </p>
+              <h2>Outros postos perto de si</h2>
             </div>
             <p id="results-summary" class="section-note">
-              Aguardando localização
+              Aguardamos a sua localização
             </p>
           </div>
           <div id="nearby-list" class="station-list"></div>
@@ -229,15 +322,20 @@
         <section class="card seo-card">
           <div class="section-head">
             <div>
-              <p class="section-kicker">Pesquisa nacional</p>
-              <h2>Preços de gasóleo, gasolina e GPL Auto em Portugal</h2>
+              <p class="section-kicker">
+                <span class="icon-label">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-border"></use></svg>
+                  Cobertura da pesquisa
+                </span>
+              </p>
+              <h2>Portugal inteiro e postos de Espanha perto da fronteira</h2>
             </div>
           </div>
           <p class="seo-copy">
-            O comparador reúne preços oficiais de combustíveis em postos de
-            abastecimento por todo o país, incluindo pesquisas úteis para
-            Lisboa, Porto, Braga, Coimbra, Faro, Setúbal, Aveiro, Leiria e
-            outros distritos disponibilizados pela DGEG.
+            Este comparador reúne preços oficiais de combustíveis em Portugal e
+            acrescenta automaticamente postos em Espanha quando a sua localização
+            estiver próxima da fronteira. Assim fica mais fácil decidir entre a
+            opção mais perto de si e a opção mais barata.
           </p>
           <div class="keyword-pills" aria-label="Combustíveis pesquisáveis">
             <span>Gasóleo simples</span>
@@ -247,6 +345,7 @@
             <span>GPL Auto</span>
             <span>Postos mais baratos</span>
             <span>Combustível perto de mim</span>
+            <span>Espanha fronteira</span>
             <span>DGEG</span>
           </div>
         </section>
@@ -254,7 +353,10 @@
 
       <footer class="footer">
         <p>
-          Dados: <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>
+          Dados oficiais:
+          <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">Portugal (DGEG)</a>
+          e
+          <a href="https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/" target="_blank" rel="noreferrer">Espanha</a>
         </p>
       </footer>
     </div>
@@ -263,6 +365,9 @@
       <article class="station-card">
         <div class="station-topline">
           <div>
+            <div class="station-meta">
+              <span class="country-pill station-country"></span>
+            </div>
             <h3>
               <a class="station-name-link" target="_blank" rel="noreferrer"></a>
             </h3>
@@ -275,7 +380,12 @@
         </div>
         <div class="station-footer">
           <span class="station-hours"></span>
-          <a class="station-link" target="_blank" rel="noreferrer">Abrir no mapa</a>
+          <a class="station-link" target="_blank" rel="noreferrer">
+            <span class="icon-label">
+              <svg class="icon" aria-hidden="true"><use href="#icon-map"></use></svg>
+              Ver no Google Maps
+            </span>
+          </a>
         </div>
       </article>
     </template>

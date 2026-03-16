@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar Gasóleo</title>
+    <meta
+      name="description"
+      content="Dashboard simples para encontrar os postos com combustíveis mais baratos em Portugal com base na localização atual do utilizador."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="ambient ambient-left"></div>
+      <div class="ambient ambient-right"></div>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Portugal · DGEG em direto</p>
+          <h1>Veja onde o combustível está mais barato perto de si.</h1>
+          <p class="hero-text">
+            Consulte rapidamente os melhores preços oficiais em Portugal e abra
+            qualquer posto diretamente no Google Maps.
+          </p>
+        </div>
+
+        <div class="hero-panel">
+          <div class="panel-row">
+            <label for="fuel-select">Combustível</label>
+            <select id="fuel-select" aria-label="Selecionar combustível"></select>
+          </div>
+
+          <div class="panel-row">
+            <label for="radius-select">Raio de pesquisa</label>
+            <select id="radius-select" aria-label="Selecionar raio">
+              <option value="10">10 km</option>
+              <option value="25" selected>25 km</option>
+              <option value="50">50 km</option>
+              <option value="100">100 km</option>
+              <option value="200">200 km</option>
+            </select>
+          </div>
+
+          <div class="panel-actions">
+            <button id="locate-button" class="primary-button" type="button">
+              Usar a minha localização
+            </button>
+            <button id="refresh-button" class="ghost-button" type="button">
+              Atualizar preços
+            </button>
+          </div>
+
+          <p id="location-status" class="status-line">
+            A localização ainda não foi autorizada.
+          </p>
+          <p id="load-status" class="microcopy">
+            A carregar os combustíveis disponíveis...
+          </p>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="stats-grid" aria-label="Resumo">
+          <article class="stat-card">
+            <p class="stat-label">Mais barato em Portugal</p>
+            <p id="national-price" class="stat-value">--</p>
+            <a
+              id="national-name"
+              class="stat-link is-disabled"
+              href="#"
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled="true"
+            >
+              Sem dados
+            </a>
+          </article>
+
+          <article class="stat-card">
+            <p class="stat-label">Mais barato no seu raio</p>
+            <p id="nearby-price" class="stat-value">--</p>
+            <a
+              id="nearby-name"
+              class="stat-link is-disabled"
+              href="#"
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled="true"
+            >
+              Partilhe a localização para calcular
+            </a>
+          </article>
+
+          <article class="stat-card">
+            <p class="stat-label">Posto mais próximo</p>
+            <p id="closest-distance" class="stat-value">--</p>
+            <a
+              id="closest-name"
+              class="stat-link is-disabled"
+              href="#"
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled="true"
+            >
+              Partilhe a localização para calcular
+            </a>
+          </article>
+
+          <article class="stat-card">
+            <p class="stat-label">Cobertura no raio</p>
+            <p id="coverage-count" class="stat-value">0</p>
+            <p id="coverage-detail" class="stat-detail">postos encontrados</p>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <section class="card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Ordenado por preço e distância</p>
+                <h2>Melhores opções perto de si</h2>
+              </div>
+              <p id="results-summary" class="section-note">
+                Aguardando localização
+              </p>
+            </div>
+            <div id="nearby-list" class="station-list"></div>
+          </section>
+
+          <section class="card secondary-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Referência nacional</p>
+                <h2>Top 5 no país</h2>
+              </div>
+              <p id="updated-at" class="section-note">Sem atualização</p>
+            </div>
+            <div id="national-list" class="compact-list"></div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <p>
+          Dados: <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>
+        </p>
+        <p>
+          Para ativar a geolocalização, abra esta página em
+          <code>http://localhost</code> ou num domínio HTTPS.
+        </p>
+      </footer>
+    </div>
+
+    <template id="station-card-template">
+      <article class="station-card">
+        <div class="station-topline">
+          <div>
+            <p class="station-price"></p>
+            <h3>
+              <a class="station-name-link" target="_blank" rel="noreferrer"></a>
+            </h3>
+          </div>
+          <p class="station-distance"></p>
+        </div>
+        <p class="station-meta"></p>
+        <p class="station-address"></p>
+        <div class="station-footer">
+          <span class="station-updated"></span>
+          <a class="station-link" target="_blank" rel="noreferrer">Abrir no mapa</a>
+        </div>
+      </article>
+    </template>
+
+    <template id="national-item-template">
+      <article class="national-item">
+        <div>
+          <p class="national-rank"></p>
+          <h3>
+            <a class="national-station-link" target="_blank" rel="noreferrer"></a>
+          </h3>
+          <p class="national-location"></p>
+        </div>
+        <p class="national-price"></p>
+      </article>
+    </template>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

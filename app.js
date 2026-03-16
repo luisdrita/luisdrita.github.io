@@ -124,6 +124,60 @@ function formatPortugalWorkingHours(schedule) {
   return parts.join(" · ") || "Horário indisponível";
 }
 
+function formatSpainDayToken(token) {
+  const dayMap = {
+    L: "seg",
+    M: "ter",
+    X: "qua",
+    J: "qui",
+    V: "sex",
+    S: "sáb",
+    D: "dom",
+    F: "fer",
+  };
+
+  return dayMap[token] ?? token.toLowerCase();
+}
+
+function formatSpainDayPart(dayPart) {
+  return dayPart
+    .split(",")
+    .map((group) =>
+      group
+        .trim()
+        .split("-")
+        .map((token) => formatSpainDayToken(token.trim()))
+        .join("-"),
+    )
+    .join(", ");
+}
+
+function formatSpainWorkingHours(value) {
+  const rawValue = `${value ?? ""}`.trim();
+
+  if (!rawValue) {
+    return "Horário indisponível";
+  }
+
+  return rawValue
+    .split(";")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => {
+      const colonIndex = segment.indexOf(":");
+
+      if (colonIndex === -1) {
+        return segment.replace(/24H/gi, "24h");
+      }
+
+      const dayPart = segment.slice(0, colonIndex).trim();
+      const hoursPart = segment.slice(colonIndex + 1).trim().replace(/24H/gi, "24h");
+
+      return `${formatSpainDayPart(dayPart)}: ${hoursPart}`;
+    })
+    .join(" · ");
+}
+
 function formatFetchedAt(date) {
   return new Intl.DateTimeFormat("pt-PT", {
     dateStyle: "short",
@@ -309,7 +363,7 @@ function buildSpainStation(rawStation, index, fuelConfig, sourceTimestamp) {
     Latitude: parseSpainCoordinate(rawStation.Latitud),
     Longitude: parseSpainCoordinate(rawStation["Longitud (WGS84)"]),
     Country: "España",
-    WorkingHours: sanitizeText(rawStation.Horario),
+    WorkingHours: formatSpainWorkingHours(rawStation.Horario),
     priceValue: parsePrice(rawStation[priceField]),
   };
 }
@@ -480,7 +534,6 @@ function renderNearbyList(stations) {
     fragment.querySelector(".station-address").textContent = buildAddress(station);
     fragment.querySelector(".station-distance").textContent = formatDistance(station.distanceKm);
     fragment.querySelector(".station-price").textContent = formatCurrency(station.priceValue);
-    fragment.querySelector(".station-updated").textContent = `Atualizado: ${formatStationUpdated(station.DataAtualizacao)}`;
     const hoursElement = fragment.querySelector(".station-hours");
     hoursElement.dataset.stationId = station.Id;
     hoursElement.textContent = `Horário: ${getStationHours(station) ?? "a carregar..."}`;

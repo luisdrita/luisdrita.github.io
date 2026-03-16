@@ -216,7 +216,6 @@ button:focus,
 .closest-hours,
 .station-address,
 .station-hours,
-.station-updated,
 .seo-copy,
 .footer {
   color: var(--muted);
@@ -229,8 +228,7 @@ button:focus,
 .closest-address,
 .closest-hours,
 .station-address,
-.station-hours,
-.station-updated {
+.station-hours {
   margin: 0;
   line-height: 1.55;
 }

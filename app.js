@@ -67,7 +67,10 @@ function setLoadStatus(message, isError = false) {
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
 }
 
-function setClosestLoading(isLoading, message = "A escolher as 3 melhores opções por distância e preço...") {
+function setClosestLoading(
+  isLoading,
+  message = "A escolher as 3 melhores opções por distância e preço. Aguarde...",
+) {
   elements.closestLoading.hidden = !isLoading;
   elements.closestLoading.setAttribute("aria-hidden", String(!isLoading));
   elements.closestLoading.querySelector("span:last-child").textContent = message;
@@ -579,7 +582,7 @@ function getLocationErrorMessage(error) {
   }
 
   if (error?.code === LOCATION_ERROR_CODES.TIMEOUT) {
-    return "A localização demorou demasiado. Tente novamente num local com melhor sinal de GPS ou rede.";
+    return "A localização demorou demasiado. Continue a aguardar alguns segundos ou tente novamente num local com melhor sinal de GPS ou rede.";
   }
 
   return "Nao foi possivel obter a localização.";
@@ -593,7 +596,7 @@ async function resolveBrowserLocation() {
       throw error;
     }
 
-    updateLocationStatus("A localização demorou. A tentar novamente com maior precisão...");
+    updateLocationStatus("A localização demorou. A tentar novamente com maior precisão. Aguarde.");
     return getCurrentBrowserPosition(FALLBACK_LOCATION_OPTIONS);
   }
 }
@@ -746,7 +749,7 @@ function renderNearbyList(stations, rankStart = 2) {
 function renderWithoutLocation() {
   renderClosestPlaceholder("Aguardamos a sua localização");
   elements.resultsSummary.textContent =
-    "Ative a localização para ver as 3 melhores opções por distância e preço";
+    "Ative a localização e aguarde para ver as 3 melhores opções por distância e preço";
   elements.nearbyList.innerHTML =
     '<p class="empty-state">Assim que permitir a localização mostramos aqui apenas a 2ª e 3ª melhores opções.</p>';
 }
@@ -893,7 +896,7 @@ async function refreshDashboard(forceRefresh = false) {
   setLoadStatus(`A carregar preços oficiais para ${fuelLabel.toLowerCase()}...`);
   setClosestLoading(
     Boolean(state.location),
-    `A escolher as 3 melhores opções para ${fuelLabel.toLowerCase()}...`,
+    `A escolher as 3 melhores opções para ${fuelLabel.toLowerCase()}. Aguarde pelo resultado final...`,
   );
 
   try {
@@ -981,11 +984,11 @@ async function requestLocation() {
 
   updateLocationStatus(
     permissionState === "granted"
-      ? "A obter a sua localização para ordenar os postos..."
-      : "A pedir acesso à sua localização...",
+      ? "A obter a sua localização para ordenar os postos. Aguarde..."
+      : "A pedir acesso à sua localização. Aguarde pela autorização do browser.",
   );
   setLocateButtonLabel("A obter localização...");
-  setClosestLoading(true, "A obter a sua localização...");
+  setClosestLoading(true, "A obter a sua localização. Aguarde até começarmos a comparar os postos...");
 
   try {
     const { coords } = await resolveBrowserLocation();
@@ -999,7 +1002,7 @@ async function requestLocation() {
       longitude: coords.longitude,
     };
 
-    updateLocationStatus("Localização ativa. A ordenar os postos por distância e preço.");
+    updateLocationStatus("Localização ativa. A ordenar os postos por distância e preço. Aguarde pelo top 3.");
     setLocateButtonLabel("Atualizar localização");
     await refreshDashboard();
   } catch (error) {

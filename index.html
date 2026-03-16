@@ -157,10 +157,14 @@
             <label for="fuel-select">
               <span class="icon-label">
                 <svg class="icon" aria-hidden="true"><use href="#icon-fuel"></use></svg>
-                Combustível a comparar
+                Escolha o combustível no menu
               </span>
             </label>
-            <select id="fuel-select" aria-label="Selecionar combustível"></select>
+            <div class="select-wrap">
+              <select id="fuel-select" aria-label="Selecionar combustível"></select>
+              <span class="select-hint">Toque para abrir a lista</span>
+              <span class="select-chevron" aria-hidden="true">▾</span>
+            </div>
           </div>
 
           <div class="panel-actions">
@@ -173,10 +177,10 @@
           </div>
 
           <p id="location-status" class="status-line" aria-live="polite">
-            A pedir acesso à sua localização...
+            A pedir acesso à sua localização. Aguarde pela autorização do browser.
           </p>
           <p id="load-status" class="microcopy" aria-live="polite">
-            A carregar os combustíveis disponíveis...
+            A preparar a lista de combustíveis e os preços oficiais. Aguarde.
           </p>
         </div>
       </header>
@@ -209,7 +213,7 @@
               hidden
             >
               <span class="loading-dot" aria-hidden="true"></span>
-              <span>A comparar postos próximos e preços oficiais...</span>
+              <span>A comparar distância e preço. Aguarde até aparecer a melhor opção.</span>
             </div>
             <h2 class="closest-heading">
               <a

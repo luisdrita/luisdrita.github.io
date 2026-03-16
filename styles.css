@@ -87,7 +87,6 @@ a {
 .hero,
 .card,
 .closest-main,
-.compact-card,
 .footer {
   position: relative;
   z-index: 1;
@@ -291,8 +290,7 @@ button:focus,
 }
 
 .closest-main,
-.card,
-.compact-card {
+.card {
   padding: 20px;
   border-radius: 24px;
 }
@@ -301,6 +299,7 @@ button:focus,
   background:
     radial-gradient(circle at top right, rgba(255, 184, 77, 0.08), transparent 28%),
     var(--panel-strong);
+  border-color: rgba(255, 184, 77, 0.22);
 }
 
 .closest-loading {
@@ -420,31 +419,6 @@ button:focus,
   margin-top: 18px;
 }
 
-.compact-card .stat-value {
-  margin: 0;
-  font-size: 1.6rem;
-}
-
-.stat-scope {
-  margin: -2px 0 12px;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.stat-link {
-  display: inline-block;
-  margin-top: 12px;
-  color: var(--text);
-  font-weight: 600;
-  line-height: 1.5;
-  text-decoration: none;
-}
-
-.stat-link:hover {
-  color: var(--accent);
-  text-decoration: underline;
-}
-
 .alternatives-card,
 .seo-card,
 .noscript-card {
@@ -487,7 +461,26 @@ button:focus,
 }
 
 .station-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.station-rank {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 184, 77, 0.12);
+  border: 1px solid rgba(255, 184, 77, 0.18);
+  color: var(--accent);
+  font-family: "Sora", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .station-name-link {
@@ -602,10 +595,6 @@ button:focus,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .closest-card {
-    grid-template-columns: 1.5fr 0.9fr;
-    align-items: start;
-  }
 }
 
 @media (min-width: 900px) {
@@ -621,7 +610,6 @@ button:focus,
 
   .card,
   .closest-main,
-  .compact-card,
   .alternatives-card,
   .seo-card,
   .noscript-card {

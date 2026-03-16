@@ -2,8 +2,10 @@ const API_BASE = "https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb";
 const SPAIN_API_URL =
   "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/";
 const DEFAULT_FUEL_ID = "2101";
-const ALTERNATIVE_LIMIT = 3;
+const TOP_STATIONS_LIMIT = 3;
 const MAX_PORTUGAL_STATIONS = 10000;
+const DISTANCE_WEIGHT = 0.6;
+const PRICE_WEIGHT = 0.4;
 const LOCATION_ERROR_CODES = {
   PERMISSION_DENIED: 1,
   POSITION_UNAVAILABLE: 2,
@@ -47,8 +49,6 @@ const elements = {
   locationStatus: document.querySelector("#location-status"),
   loadStatus: document.querySelector("#load-status"),
   closestLoading: document.querySelector("#closest-loading"),
-  nationalPrice: document.querySelector("#national-price"),
-  nationalName: document.querySelector("#national-name"),
   closestName: document.querySelector("#closest-name"),
   closestCountry: document.querySelector("#closest-country"),
   closestDistance: document.querySelector("#closest-distance"),
@@ -67,7 +67,7 @@ function setLoadStatus(message, isError = false) {
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
 }
 
-function setClosestLoading(isLoading, message = "A comparar os postos mais próximos e mais baratos...") {
+function setClosestLoading(isLoading, message = "A escolher as 3 melhores opções por distância e preço...") {
   elements.closestLoading.hidden = !isLoading;
   elements.closestLoading.setAttribute("aria-hidden", String(!isLoading));
   elements.closestLoading.querySelector("span:last-child").textContent = message;
@@ -220,6 +220,10 @@ function getCountryLabel(country) {
 }
 
 function setCountryPill(element, country) {
+  if (!element) {
+    return;
+  }
+
   element.textContent = getCountryLabel(country);
   element.classList.remove("is-portugal", "is-spain", "is-neutral");
 
@@ -344,61 +348,61 @@ function haversineDistanceKm(origin, destination) {
   return 2 * earthRadius * Math.asin(Math.sqrt(a));
 }
 
-function findCheapestStation(stations) {
-  let cheapestStation = null;
-
-  stations.forEach((station) => {
-    if (!Number.isFinite(station.priceValue)) {
-      return;
-    }
-
-    if (!cheapestStation || station.priceValue < cheapestStation.priceValue) {
-      cheapestStation = station;
-    }
-  });
-
-  return cheapestStation;
-}
-
-function getClosestStations(stations, limit) {
-  const closestStations = [];
-  let eligibleCount = 0;
-
-  stations.forEach((station) => {
-    if (!Number.isFinite(station.Latitude) || !Number.isFinite(station.Longitude)) {
-      return;
-    }
-
-    eligibleCount += 1;
-    const candidate = {
+function getBestStations(stations, limit) {
+  const eligibleStations = stations
+    .filter(
+      (station) =>
+        Number.isFinite(station.Latitude) &&
+        Number.isFinite(station.Longitude) &&
+        Number.isFinite(station.priceValue),
+    )
+    .map((station) => ({
       ...station,
       distanceKm: haversineDistanceKm(state.location, {
         latitude: station.Latitude,
         longitude: station.Longitude,
       }),
-    };
+    }));
 
-    let insertAt = closestStations.length;
+  if (!eligibleStations.length) {
+    return { bestStations: [], eligibleCount: 0 };
+  }
 
-    for (let index = 0; index < closestStations.length; index += 1) {
-      if (candidate.distanceKm < closestStations[index].distanceKm) {
-        insertAt = index;
-        break;
-      }
-    }
+  const distances = eligibleStations.map((station) => station.distanceKm);
+  const prices = eligibleStations.map((station) => station.priceValue);
+  const minDistance = Math.min(...distances);
+  const maxDistance = Math.max(...distances);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const distanceRange = maxDistance - minDistance;
+  const priceRange = maxPrice - minPrice;
 
-    if (insertAt === closestStations.length && closestStations.length >= limit) {
-      return;
-    }
+  eligibleStations.forEach((station) => {
+    const normalizedDistance =
+      distanceRange > 0 ? (station.distanceKm - minDistance) / distanceRange : 0;
+    const normalizedPrice =
+      priceRange > 0 ? (station.priceValue - minPrice) / priceRange : 0;
 
-    closestStations.splice(insertAt, 0, candidate);
-
-    if (closestStations.length > limit) {
-      closestStations.pop();
-    }
+    station.rankScore =
+      normalizedDistance * DISTANCE_WEIGHT + normalizedPrice * PRICE_WEIGHT;
   });
 
-  return { closestStations, eligibleCount };
+  eligibleStations.sort((left, right) => {
+    if (left.rankScore !== right.rankScore) {
+      return left.rankScore - right.rankScore;
+    }
+
+    if (left.distanceKm !== right.distanceKm) {
+      return left.distanceKm - right.distanceKm;
+    }
+
+    return left.priceValue - right.priceValue;
+  });
+
+  return {
+    bestStations: eligibleStations.slice(0, limit),
+    eligibleCount: eligibleStations.length,
+  };
 }
 
 function stationFromApi(rawStation) {
@@ -669,28 +673,23 @@ function renderClosestPlaceholder(message) {
   elements.closestPrice.textContent = "--";
   elements.closestUpdated.textContent = "--";
   elements.closestAddress.textContent =
-    "Autorize a sua localização para comparar postos em Portugal e Espanha e abrir a melhor opção no Google Maps.";
+    "Autorize a sua localização para comparar as 3 melhores opções em Portugal e Espanha e abrir a melhor no Google Maps.";
   setClosestHours(null);
   setMapsButton(null);
 }
 
-function renderNationalSnapshot(stations) {
-  const cheapestNational = findCheapestStation(stations);
-  elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
-  setActionLink(elements.nationalName, cheapestNational, "Sem posto disponível");
-}
-
-function renderNearbyList(stations) {
+function renderNearbyList(stations, rankStart = 2) {
   elements.nearbyList.innerHTML = "";
 
   if (!stations.length) {
     elements.nearbyList.innerHTML =
-      '<p class="empty-state">Não encontrámos mais alternativas relevantes perto de si. O posto sugerido já é a melhor opção imediata.</p>';
+      '<p class="empty-state">Não encontrámos mais opções com dados suficientes para completar o top 3.</p>';
     return;
   }
 
-  stations.forEach((station) => {
+  stations.forEach((station, index) => {
     const fragment = elements.stationTemplate.content.cloneNode(true);
+    fragment.querySelector(".station-rank").textContent = `${rankStart + index}ª opção`;
     setCountryPill(fragment.querySelector(".station-country"), station.Country);
     fragment.querySelector(".station-name-link").textContent = station.Nome;
     fragment.querySelector(".station-name-link").href = buildMapLink(station);
@@ -705,25 +704,22 @@ function renderNearbyList(stations) {
   });
 }
 
-function renderWithoutLocation(stations) {
-  renderNationalSnapshot(stations);
+function renderWithoutLocation() {
   renderClosestPlaceholder("Aguardamos a sua localização");
   elements.resultsSummary.textContent =
-    "Ative a localização para comparar postos próximos em Portugal e Espanha";
+    "Ative a localização para ver as 3 melhores opções por distância e preço";
   elements.nearbyList.innerHTML =
-    '<p class="empty-state">Assim que permitir a localização mostramos aqui os postos mais próximos e mais baratos perto de si.</p>';
+    '<p class="empty-state">Assim que permitir a localização mostramos aqui apenas a 2ª e 3ª melhores opções.</p>';
 }
 
 function renderWithLocation(stations) {
-  const { closestStations, eligibleCount } = getClosestStations(stations, ALTERNATIVE_LIMIT + 1);
-  const closestStation = closestStations[0];
-  const alternatives = closestStations.slice(1);
-
-  renderNationalSnapshot(stations);
+  const { bestStations, eligibleCount } = getBestStations(stations, TOP_STATIONS_LIMIT);
+  const closestStation = bestStations[0];
+  const alternatives = bestStations.slice(1);
 
   if (!closestStation) {
     renderClosestPlaceholder("Sem posto recomendado de momento");
-    elements.resultsSummary.textContent = "Não foi possível ordenar os postos próximos";
+    elements.resultsSummary.textContent = "Não foi possível calcular o top 3";
     elements.nearbyList.innerHTML =
       '<p class="empty-state">Os serviços oficiais não devolveram coordenadas suficientes para recomendar postos para este combustível.</p>';
     return;
@@ -738,8 +734,15 @@ function renderWithLocation(stations) {
   setClosestHours(closestStation, "Horário: a carregar...");
   setMapsButton(closestStation);
 
-  elements.resultsSummary.textContent = `${Math.max(eligibleCount - 1, 0)} postos adicionais ordenados por proximidade`;
-  renderNearbyList(alternatives);
+  if (eligibleCount >= TOP_STATIONS_LIMIT) {
+    elements.resultsSummary.textContent =
+      "Mostramos apenas as 3 melhores opções pelo equilíbrio entre distância e preço";
+  } else {
+    elements.resultsSummary.textContent =
+      `Encontrámos ${eligibleCount} opção${eligibleCount === 1 ? "" : "ões"} com preço e distância válidos`;
+  }
+
+  renderNearbyList(alternatives, 2);
   void ensureWorkingHoursForVisibleStations([closestStation, ...alternatives]);
 }
 
@@ -851,7 +854,7 @@ async function refreshDashboard(forceRefresh = false) {
   setLoadStatus(`A carregar preços oficiais para ${fuelLabel.toLowerCase()}...`);
   setClosestLoading(
     Boolean(state.location),
-    `A comparar distância e preço para ${fuelLabel.toLowerCase()}...`,
+    `A escolher as 3 melhores opções para ${fuelLabel.toLowerCase()}...`,
   );
 
   try {
@@ -885,7 +888,7 @@ async function refreshDashboard(forceRefresh = false) {
         return;
       }
 
-      renderWithoutLocation(portugalStations);
+      renderWithoutLocation();
     }
 
     if (!isActiveRefresh(requestId, requestedFuelId)) {

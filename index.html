@@ -132,9 +132,9 @@
           <p class="eyebrow">Postos mais próximos e mais baratos</p>
           <h1>Encontre rapidamente o melhor posto perto de si.</h1>
           <p class="hero-text">
-            Ordenamos os postos pelo que realmente interessa: distância e preço
-            oficial por litro. Incluímos postos em Portugal e também em Espanha
-            quando estiver perto da fronteira.
+            Mostramos apenas as 3 melhores opções com base na distância e no
+            preço oficial por litro. Incluímos postos em Portugal e também em
+            Espanha quando estiver perto da fronteira.
           </p>
           <div class="hero-highlights" aria-label="Principais vantagens">
             <span class="info-chip">
@@ -193,12 +193,12 @@
           </section>
         </noscript>
 
-        <section class="closest-card" aria-label="Posto mais próximo">
+        <section class="closest-card" aria-label="Melhor posto recomendado">
           <article class="closest-main">
             <p class="section-kicker">
               <span class="icon-label">
                 <svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg>
-                Sugestão principal
+                Melhor opção agora
               </span>
             </p>
             <div
@@ -252,8 +252,8 @@
               </article>
             </div>
             <p id="closest-address" class="closest-address">
-              Quando autorizar a localização mostramos a melhor opção perto de si
-              em Portugal ou Espanha.
+              Quando autorizar a localização mostramos a melhor opção e as duas
+              alternativas seguintes em Portugal ou Espanha.
             </p>
             <p id="closest-hours" class="closest-hours">Horário: --</p>
             <div class="primary-actions">
@@ -279,26 +279,6 @@
             </div>
           </article>
 
-          <article class="card compact-card">
-            <p class="stat-label">
-              <span class="icon-label">
-                <svg class="icon" aria-hidden="true"><use href="#icon-euro"></use></svg>
-                Melhor preço encontrado
-              </span>
-            </p>
-            <p class="stat-scope">Portugal e Espanha quando aplicável</p>
-            <p id="national-price" class="stat-value">--</p>
-            <a
-              id="national-name"
-              class="stat-link is-disabled"
-              href="#"
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled="true"
-            >
-              Sem dados
-            </a>
-          </article>
         </section>
 
         <section class="card alternatives-card">
@@ -307,10 +287,10 @@
               <p class="section-kicker">
                 <span class="icon-label">
                   <svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg>
-                  Alternativas próximas
+                  Top 3 para si
                 </span>
               </p>
-              <h2>Outros postos perto de si</h2>
+              <h2>2ª e 3ª melhores opções</h2>
             </div>
             <p id="results-summary" class="section-note">
               Aguardamos a sua localização
@@ -366,6 +346,7 @@
         <div class="station-topline">
           <div>
             <div class="station-meta">
+              <span class="station-rank"></span>
               <span class="country-pill station-country"></span>
             </div>
             <h3>

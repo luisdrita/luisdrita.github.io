@@ -12,6 +12,8 @@ const state = {
   currentFuelId: null,
   pendingStationsPromise: null,
   pendingFuelId: null,
+  portugalHoursById: new Map(),
+  pendingPortugalHoursById: new Map(),
   currentSpainStations: [],
   currentSpainFuelKey: null,
   pendingSpainPromise: null,
@@ -35,6 +37,7 @@ const elements = {
   closestPrice: document.querySelector("#closest-price"),
   closestUpdated: document.querySelector("#closest-updated"),
   closestAddress: document.querySelector("#closest-address"),
+  closestHours: document.querySelector("#closest-hours"),
   closestMapsLink: document.querySelector("#closest-maps-link"),
   resultsSummary: document.querySelector("#results-summary"),
   nearbyList: document.querySelector("#nearby-list"),
@@ -99,6 +102,28 @@ function formatStationUpdated(value) {
   return value;
 }
 
+function formatPortugalWorkingHours(schedule) {
+  if (!schedule) {
+    return "Horário indisponível";
+  }
+
+  const parts = [];
+
+  if (schedule.DiasUteis) {
+    parts.push(`Dias úteis ${schedule.DiasUteis}`);
+  }
+
+  if (schedule.Sabado) {
+    parts.push(`Sáb ${schedule.Sabado}`);
+  }
+
+  if (schedule.Domingo) {
+    parts.push(`Dom ${schedule.Domingo}`);
+  }
+
+  return parts.join(" · ") || "Horário indisponível";
+}
+
 function formatFetchedAt(date) {
   return new Intl.DateTimeFormat("pt-PT", {
     dateStyle: "short",
@@ -154,6 +179,41 @@ function setMapsButton(station) {
   elements.closestMapsLink.href = buildMapLink(station);
   elements.closestMapsLink.removeAttribute("aria-disabled");
   elements.closestMapsLink.classList.remove("is-disabled");
+}
+
+function getStationHours(station) {
+  if (station.WorkingHours) {
+    return station.WorkingHours;
+  }
+
+  if (station.Country === "Portugal" && state.portugalHoursById.has(station.Id)) {
+    return state.portugalHoursById.get(station.Id);
+  }
+
+  return null;
+}
+
+function setClosestHours(station, fallback = "Horário: --") {
+  const hours = station ? getStationHours(station) : null;
+  elements.closestHours.dataset.stationId = station?.Id ?? "";
+  elements.closestHours.textContent = hours
+    ? `Horário: ${hours}`
+    : fallback;
+}
+
+function applyStationHoursToVisibleDom(station) {
+  const hours = getStationHours(station) ?? "Horário indisponível";
+  const selectors = [`[data-station-id="${station.Id}"]`];
+
+  selectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      if (element.id === "closest-hours") {
+        element.textContent = `Horário: ${hours}`;
+      } else {
+        element.textContent = `Horário: ${hours}`;
+      }
+    });
+  });
 }
 
 function haversineDistanceKm(origin, destination) {
@@ -249,6 +309,7 @@ function buildSpainStation(rawStation, index, fuelConfig, sourceTimestamp) {
     Latitude: parseSpainCoordinate(rawStation.Latitud),
     Longitude: parseSpainCoordinate(rawStation["Longitud (WGS84)"]),
     Country: "España",
+    WorkingHours: sanitizeText(rawStation.Horario),
     priceValue: parsePrice(rawStation[priceField]),
   };
 }
@@ -323,6 +384,30 @@ async function fetchStationsForFuel(fuelId) {
     .filter((station) => Number.isFinite(station.priceValue));
 }
 
+async function fetchPortugalStationHours(stationId) {
+  if (state.portugalHoursById.has(stationId)) {
+    return state.portugalHoursById.get(stationId);
+  }
+
+  if (state.pendingPortugalHoursById.has(stationId)) {
+    return state.pendingPortugalHoursById.get(stationId);
+  }
+
+  const pending = fetchJson("/GetDadosPosto", { id: stationId })
+    .then((data) => formatPortugalWorkingHours(data.resultado?.HorarioPosto))
+    .catch(() => "Horário indisponível")
+    .then((hours) => {
+      state.portugalHoursById.set(stationId, hours);
+      return hours;
+    })
+    .finally(() => {
+      state.pendingPortugalHoursById.delete(stationId);
+    });
+
+  state.pendingPortugalHoursById.set(stationId, pending);
+  return pending;
+}
+
 async function fetchSpainStationsForFuel(fuel) {
   const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
 
@@ -369,6 +454,7 @@ function renderClosestPlaceholder(message) {
   elements.closestPrice.textContent = "--";
   elements.closestUpdated.textContent = "--";
   elements.closestAddress.textContent = "Partilhe a localização para abrir o posto recomendado no Google Maps.";
+  setClosestHours(null);
   setMapsButton(null);
 }
 
@@ -394,7 +480,10 @@ function renderNearbyList(stations) {
     fragment.querySelector(".station-address").textContent = buildAddress(station);
     fragment.querySelector(".station-distance").textContent = formatDistance(station.distanceKm);
     fragment.querySelector(".station-price").textContent = formatCurrency(station.priceValue);
-    fragment.querySelector(".station-updated").textContent = `Preço DGEG: ${formatStationUpdated(station.DataAtualizacao)}`;
+    fragment.querySelector(".station-updated").textContent = `Atualizado: ${formatStationUpdated(station.DataAtualizacao)}`;
+    const hoursElement = fragment.querySelector(".station-hours");
+    hoursElement.dataset.stationId = station.Id;
+    hoursElement.textContent = `Horário: ${getStationHours(station) ?? "a carregar..."}`;
     fragment.querySelector(".station-link").href = buildMapLink(station);
     elements.nearbyList.append(fragment);
   });
@@ -441,10 +530,33 @@ function renderWithLocation(stations) {
   elements.closestPrice.textContent = formatCurrency(closestStation.priceValue);
   elements.closestUpdated.textContent = formatStationUpdated(closestStation.DataAtualizacao);
   elements.closestAddress.textContent = buildAddress(closestStation);
+  setClosestHours(closestStation, "Horário: a carregar...");
   setMapsButton(closestStation);
 
   elements.resultsSummary.textContent = `${Math.max(closestStations.length - 1, 0)} alternativas encontradas perto de si`;
   renderNearbyList(alternatives);
+  void ensureWorkingHoursForVisibleStations([closestStation, ...alternatives]);
+}
+
+async function ensureWorkingHoursForVisibleStations(stations) {
+  const portugalStations = stations.filter(
+    (station) =>
+      station &&
+      station.Country === "Portugal" &&
+      !getStationHours(station),
+  );
+
+  if (!portugalStations.length) {
+    return;
+  }
+
+  await Promise.all(
+    portugalStations.map(async (station) => {
+      const hours = await fetchPortugalStationHours(station.Id);
+      station.WorkingHours = hours;
+      applyStationHoursToVisibleDom(station);
+    }),
+  );
 }
 
 async function loadStations(forceRefresh = false) {

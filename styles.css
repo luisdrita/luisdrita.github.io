@@ -213,7 +213,9 @@ button:focus,
 .microcopy,
 .section-note,
 .closest-address,
+.closest-hours,
 .station-address,
+.station-hours,
 .station-updated,
 .seo-copy,
 .footer {
@@ -225,7 +227,9 @@ button:focus,
 .section-note,
 .seo-copy,
 .closest-address,
+.closest-hours,
 .station-address,
+.station-hours,
 .station-updated {
   margin: 0;
   line-height: 1.55;
@@ -326,6 +330,10 @@ button:focus,
 
 .closest-address {
   margin-top: 18px;
+}
+
+.closest-hours {
+  margin-top: 8px;
 }
 
 .primary-actions {

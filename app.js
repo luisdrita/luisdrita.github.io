@@ -1,4 +1,6 @@
 const API_BASE = "https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb";
+const SPAIN_API_URL =
+  "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/";
 const DEFAULT_FUEL_ID = "2101";
 const AUTO_REFRESH_MS = 300000;
 const ALTERNATIVE_LIMIT = 3;
@@ -10,6 +12,10 @@ const state = {
   currentFuelId: null,
   pendingStationsPromise: null,
   pendingFuelId: null,
+  currentSpainStations: [],
+  currentSpainFuelKey: null,
+  pendingSpainPromise: null,
+  pendingSpainFuelKey: null,
   lastFetchedAt: null,
   location: null,
 };
@@ -94,7 +100,7 @@ function formatFetchedAt(date) {
 }
 
 function buildAddress(station) {
-  const parts = [station.Morada, station.Localidade, station.Municipio, station.Distrito]
+  const parts = [station.Morada, station.Localidade, station.Municipio, station.Distrito, station.Country]
     .filter((part) => part !== null && part !== undefined && `${part}`.trim() !== "")
     .map((part) => `${part}`.trim());
 
@@ -163,7 +169,80 @@ function haversineDistanceKm(origin, destination) {
 function stationFromApi(rawStation) {
   return {
     ...rawStation,
+    Country: "Portugal",
     priceValue: parsePrice(rawStation.Preco),
+  };
+}
+
+function parseSpainCoordinate(value) {
+  return Number.parseFloat(`${value}`.replace(",", "."));
+}
+
+function getSpainFuelConfig(fuelName) {
+  const normalized = `${fuelName}`.trim().toLowerCase();
+
+  const mappings = {
+    "gasóleo simples": {
+      key: "gasoleo-a",
+      fields: ["Precio Gasoleo A"],
+    },
+    "gasóleo especial": {
+      key: "gasoleo-premium",
+      fields: ["Precio Gasoleo Premium"],
+    },
+    "gasóleo colorido": {
+      key: "gasoleo-b",
+      fields: ["Precio Gasoleo B"],
+    },
+    "gasolina simples 95": {
+      key: "gasolina-95",
+      fields: ["Precio Gasolina 95 E5", "Precio Gasolina 95 E10"],
+    },
+    "gasolina especial 95": {
+      key: "gasolina-95-premium",
+      fields: ["Precio Gasolina 95 E5 Premium", "Precio Gasolina 95 E5", "Precio Gasolina 95 E10"],
+    },
+    "gasolina 98": {
+      key: "gasolina-98",
+      fields: ["Precio Gasolina 98 E5", "Precio Gasolina 98 E10"],
+    },
+    "gasolina especial 98": {
+      key: "gasolina-98",
+      fields: ["Precio Gasolina 98 E5", "Precio Gasolina 98 E10"],
+    },
+    "gpl auto": {
+      key: "gpl",
+      fields: ["Precio Gases licuados del petróleo"],
+    },
+  };
+
+  return mappings[normalized] ?? null;
+}
+
+function buildSpainStation(rawStation, index, fuelConfig, sourceTimestamp) {
+  const priceField = fuelConfig.fields.find((field) => `${rawStation[field] ?? ""}`.trim() !== "");
+
+  if (!priceField) {
+    return null;
+  }
+
+  return {
+    Id: `es-${fuelConfig.key}-${index}`,
+    Nome: sanitizeText(rawStation["Rótulo"]),
+    Marca: sanitizeText(rawStation["Rótulo"]),
+    TipoPosto: "Posto terrestre",
+    Municipio: sanitizeText(rawStation.Municipio),
+    Preco: `${rawStation[priceField]} €`,
+    Combustivel: fuelConfig.key,
+    DataAtualizacao: sourceTimestamp,
+    Distrito: sanitizeText(rawStation["Provincia"] ?? rawStation["Comunidad Autónoma"]),
+    Morada: sanitizeText(rawStation["Dirección"]),
+    Localidade: sanitizeText(rawStation.Localidad),
+    CodPostal: sanitizeText(rawStation["C.P."]),
+    Latitude: parseSpainCoordinate(rawStation.Latitud),
+    Longitude: parseSpainCoordinate(rawStation["Longitud (WGS84)"]),
+    Country: "España",
+    priceValue: parsePrice(rawStation[priceField]),
   };
 }
 
@@ -235,6 +314,34 @@ async function fetchStationsForFuel(fuelId) {
   return fullResult.resultado
     .map(stationFromApi)
     .filter((station) => Number.isFinite(station.priceValue));
+}
+
+async function fetchSpainStationsForFuel(fuel) {
+  const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
+
+  if (!fuelConfig) {
+    return [];
+  }
+
+  let response;
+
+  try {
+    response = await fetch(`${SPAIN_API_URL}?_ts=${Date.now()}`, { cache: "no-store" });
+  } catch (error) {
+    throw new Error("Nao foi possivel ligar ao serviço oficial de preços em Espanha.");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Falha ao obter dados de Espanha (${response.status})`);
+  }
+
+  const data = await response.json();
+
+  return (data.ListaEESSPrecio ?? [])
+    .map((rawStation, index) =>
+      buildSpainStation(rawStation, index, fuelConfig, sanitizeText(data.Fecha)),
+    )
+    .filter((station) => station && Number.isFinite(station.priceValue));
 }
 
 function populateFuelSelect() {
@@ -369,23 +476,76 @@ async function loadStations(forceRefresh = false) {
   return state.pendingStationsPromise;
 }
 
+async function loadSpainStations(fuel, forceRefresh = false) {
+  const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
+
+  if (!fuelConfig) {
+    state.currentSpainStations = [];
+    state.currentSpainFuelKey = null;
+    return [];
+  }
+
+  const requestedFuelKey = fuelConfig.key;
+  const shouldReuseCurrent =
+    !forceRefresh &&
+    state.currentSpainFuelKey === requestedFuelKey &&
+    state.currentSpainStations.length > 0;
+
+  if (shouldReuseCurrent) {
+    return state.currentSpainStations;
+  }
+
+  const shouldReusePending =
+    !forceRefresh &&
+    state.pendingSpainPromise &&
+    state.pendingSpainFuelKey === requestedFuelKey;
+
+  if (shouldReusePending) {
+    return state.pendingSpainPromise;
+  }
+
+  state.pendingSpainFuelKey = requestedFuelKey;
+  state.pendingSpainPromise = fetchSpainStationsForFuel(fuel)
+    .then((stations) => {
+      state.currentSpainStations = stations;
+      state.currentSpainFuelKey = requestedFuelKey;
+      return stations;
+    })
+    .finally(() => {
+      state.pendingSpainPromise = null;
+      state.pendingSpainFuelKey = null;
+    });
+
+  return state.pendingSpainPromise;
+}
+
 async function refreshDashboard(forceRefresh = false) {
   const selectedFuel = state.fuelTypes.find((fuel) => String(fuel.Id) === state.selectedFuelId);
   const fuelLabel = selectedFuel?.Descritivo ?? "combustível selecionado";
   setLoadStatus(`A atualizar dados da DGEG para ${fuelLabel.toLowerCase()}...`);
 
   try {
-    const stations = await loadStations(forceRefresh);
+    const portugalStations = await loadStations(forceRefresh);
 
     if (state.location) {
-      renderWithLocation(stations);
+      let spainStations = [];
+
+      if (selectedFuel) {
+        try {
+          spainStations = await loadSpainStations(selectedFuel, forceRefresh);
+        } catch (error) {
+          spainStations = [];
+        }
+      }
+
+      renderWithLocation([...portugalStations, ...spainStations]);
     } else {
-      renderWithoutLocation(stations);
+      renderWithoutLocation(portugalStations);
     }
 
     const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : "agora";
     setLoadStatus(
-      `Dados DGEG atualizados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
+      `Dados oficiais atualizados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
     );
   } catch (error) {
     setLoadStatus(error.message, true);

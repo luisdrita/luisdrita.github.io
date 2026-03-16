@@ -99,11 +99,11 @@
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Preços de combustíveis em Portugal</p>
-          <h1>Encontre os postos de combustível mais baratos perto de si.</h1>
+          <h1>Abra o posto de combustível mais próximo em segundos.</h1>
           <p class="hero-text">
-            Compare preços oficiais de gasóleo simples, gasolina simples 95,
-            gasolina 98, GPL Auto e outros combustíveis em Portugal com dados
-            públicos da DGEG.
+            Assim que a página abre, pedimos a sua localização e mostramos o
+            posto mais próximo para o combustível escolhido, com preço por litro
+            e data oficial da DGEG.
           </p>
         </div>
 
@@ -113,30 +113,19 @@
             <select id="fuel-select" aria-label="Selecionar combustível"></select>
           </div>
 
-          <div class="panel-row">
-            <label for="radius-select">Raio de pesquisa</label>
-            <select id="radius-select" aria-label="Selecionar raio">
-              <option value="10">10 km</option>
-              <option value="25" selected>25 km</option>
-              <option value="50">50 km</option>
-              <option value="100">100 km</option>
-              <option value="200">200 km</option>
-            </select>
-          </div>
-
           <div class="panel-actions">
-            <button id="locate-button" class="primary-button" type="button">
-              Usar a minha localização
-            </button>
             <button id="refresh-button" class="ghost-button" type="button">
               Atualizar preços
             </button>
+            <button id="locate-button" class="primary-button" type="button">
+              Partilhar localização
+            </button>
           </div>
 
-          <p id="location-status" class="status-line">
-            A localização ainda não foi autorizada.
+          <p id="location-status" class="status-line" aria-live="polite">
+            A pedir acesso à sua localização...
           </p>
-          <p id="load-status" class="microcopy">
+          <p id="load-status" class="microcopy" aria-live="polite">
             A carregar os combustíveis disponíveis...
           </p>
         </div>
@@ -154,9 +143,54 @@
           </section>
         </noscript>
 
-        <section class="stats-grid" aria-label="Resumo">
-          <article class="stat-card">
-            <p class="stat-label">Mais barato em Portugal</p>
+        <section class="closest-card" aria-label="Posto mais próximo">
+          <article class="closest-main">
+            <p class="section-kicker">Sugestão imediata</p>
+            <h2 class="closest-heading">
+              <a
+                id="closest-name"
+                class="closest-name is-disabled"
+                href="#"
+                target="_blank"
+                rel="noreferrer"
+                aria-disabled="true"
+              >
+                A aguardar localização
+              </a>
+            </h2>
+            <p id="closest-distance" class="closest-distance">--</p>
+            <div class="primary-metrics">
+              <article class="metric-card">
+                <p class="metric-label">Preço por litro</p>
+                <p id="closest-price" class="metric-value">--</p>
+              </article>
+              <article class="metric-card">
+                <p class="metric-label">Atualização DGEG</p>
+                <p id="closest-updated" class="metric-value small-value">--</p>
+              </article>
+            </div>
+            <p id="closest-address" class="closest-address">
+              Assim que autorizar a localização mostramos o posto mais próximo.
+            </p>
+            <div class="primary-actions">
+              <a
+                id="closest-maps-link"
+                class="primary-button action-link is-disabled"
+                href="#"
+                target="_blank"
+                rel="noreferrer"
+                aria-disabled="true"
+              >
+                Abrir no Google Maps
+              </a>
+              <button id="retry-location-button" class="ghost-button" type="button">
+                Voltar a pedir localização
+              </button>
+            </div>
+          </article>
+
+          <article class="card compact-card">
+            <p class="stat-label">Preço mais baixo em Portugal</p>
             <p id="national-price" class="stat-value">--</p>
             <a
               id="national-name"
@@ -169,68 +203,19 @@
               Sem dados
             </a>
           </article>
-
-          <article class="stat-card">
-            <p class="stat-label">Mais barato no seu raio</p>
-            <p id="nearby-price" class="stat-value">--</p>
-            <a
-              id="nearby-name"
-              class="stat-link is-disabled"
-              href="#"
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled="true"
-            >
-              Partilhe a localização para calcular
-            </a>
-          </article>
-
-          <article class="stat-card">
-            <p class="stat-label">Posto mais próximo</p>
-            <p id="closest-distance" class="stat-value">--</p>
-            <a
-              id="closest-name"
-              class="stat-link is-disabled"
-              href="#"
-              target="_blank"
-              rel="noreferrer"
-              aria-disabled="true"
-            >
-              Partilhe a localização para calcular
-            </a>
-          </article>
-
-          <article class="stat-card">
-            <p class="stat-label">Cobertura no raio</p>
-            <p id="coverage-count" class="stat-value">0</p>
-            <p id="coverage-detail" class="stat-detail">postos encontrados</p>
-          </article>
         </section>
 
-        <section class="content-grid">
-          <section class="card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">Ordenado por preço e distância</p>
-                <h2>Melhores opções perto de si</h2>
-              </div>
-              <p id="results-summary" class="section-note">
-                Aguardando localização
-              </p>
+        <section class="card alternatives-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Alternativas rápidas</p>
+              <h2>Mais postos próximos</h2>
             </div>
-            <div id="nearby-list" class="station-list"></div>
-          </section>
-
-          <section class="card secondary-card">
-            <div class="section-head">
-              <div>
-                <p class="section-kicker">Referência nacional</p>
-                <h2>Top 5 de postos mais baratos em Portugal</h2>
-              </div>
-              <p id="updated-at" class="section-note">Sem atualização</p>
-            </div>
-            <div id="national-list" class="compact-list"></div>
-          </section>
+            <p id="results-summary" class="section-note">
+              Aguardando localização
+            </p>
+          </div>
+          <div id="nearby-list" class="station-list"></div>
         </section>
 
         <section class="card seo-card">
@@ -264,8 +249,7 @@
           Dados: <a href="https://precoscombustiveis.dgeg.gov.pt/" target="_blank" rel="noreferrer">precoscombustiveis.dgeg.gov.pt</a>
         </p>
         <p>
-          A geolocalização funciona em HTTPS e pode ser usada diretamente nesta
-          versão pública do site.
+          Compatível com telemóvel e geolocalização em HTTPS.
         </p>
       </footer>
     </div>
@@ -274,32 +258,20 @@
       <article class="station-card">
         <div class="station-topline">
           <div>
-            <p class="station-price"></p>
             <h3>
               <a class="station-name-link" target="_blank" rel="noreferrer"></a>
             </h3>
+            <p class="station-address"></p>
           </div>
-          <p class="station-distance"></p>
+          <div class="station-side">
+            <p class="station-distance"></p>
+            <p class="station-price"></p>
+          </div>
         </div>
-        <p class="station-meta"></p>
-        <p class="station-address"></p>
         <div class="station-footer">
           <span class="station-updated"></span>
           <a class="station-link" target="_blank" rel="noreferrer">Abrir no mapa</a>
         </div>
-      </article>
-    </template>
-
-    <template id="national-item-template">
-      <article class="national-item">
-        <div>
-          <p class="national-rank"></p>
-          <h3>
-            <a class="national-station-link" target="_blank" rel="noreferrer"></a>
-          </h3>
-          <p class="national-location"></p>
-        </div>
-        <p class="national-price"></p>
       </article>
     </template>
 

@@ -1,40 +1,37 @@
 const API_BASE = "https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb";
 const DEFAULT_FUEL_ID = "2101";
-const DEFAULT_RADIUS = 25;
-const NEARBY_LIMIT = 8;
 const AUTO_REFRESH_MS = 300000;
+const ALTERNATIVE_LIMIT = 3;
 
 const state = {
   fuelTypes: [],
   selectedFuelId: DEFAULT_FUEL_ID,
-  radiusKm: DEFAULT_RADIUS,
   currentStations: [],
   currentFuelId: null,
+  pendingStationsPromise: null,
+  pendingFuelId: null,
   lastFetchedAt: null,
   location: null,
 };
 
 const elements = {
   fuelSelect: document.querySelector("#fuel-select"),
-  radiusSelect: document.querySelector("#radius-select"),
-  locateButton: document.querySelector("#locate-button"),
   refreshButton: document.querySelector("#refresh-button"),
+  locateButton: document.querySelector("#locate-button"),
+  retryLocationButton: document.querySelector("#retry-location-button"),
   locationStatus: document.querySelector("#location-status"),
   loadStatus: document.querySelector("#load-status"),
   nationalPrice: document.querySelector("#national-price"),
   nationalName: document.querySelector("#national-name"),
-  nearbyPrice: document.querySelector("#nearby-price"),
-  nearbyName: document.querySelector("#nearby-name"),
-  closestDistance: document.querySelector("#closest-distance"),
   closestName: document.querySelector("#closest-name"),
-  coverageCount: document.querySelector("#coverage-count"),
-  coverageDetail: document.querySelector("#coverage-detail"),
-  nearbyList: document.querySelector("#nearby-list"),
-  nationalList: document.querySelector("#national-list"),
+  closestDistance: document.querySelector("#closest-distance"),
+  closestPrice: document.querySelector("#closest-price"),
+  closestUpdated: document.querySelector("#closest-updated"),
+  closestAddress: document.querySelector("#closest-address"),
+  closestMapsLink: document.querySelector("#closest-maps-link"),
   resultsSummary: document.querySelector("#results-summary"),
-  updatedAt: document.querySelector("#updated-at"),
+  nearbyList: document.querySelector("#nearby-list"),
   stationTemplate: document.querySelector("#station-card-template"),
-  nationalTemplate: document.querySelector("#national-item-template"),
 };
 
 function setLoadStatus(message, isError = false) {
@@ -42,8 +39,18 @@ function setLoadStatus(message, isError = false) {
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
 }
 
+function updateLocationStatus(message, isError = false) {
+  elements.locationStatus.textContent = message;
+  elements.locationStatus.style.color = isError ? "var(--danger)" : "";
+}
+
+function setLocateButtonLabel(label) {
+  elements.locateButton.textContent = label;
+  elements.retryLocationButton.textContent = label;
+}
+
 function formatCurrency(value) {
-  return `${value.toFixed(3).replace(".", ",")} €/l`;
+  return Number.isFinite(value) ? `${value.toFixed(3).replace(".", ",")} €/l` : "--";
 }
 
 function formatDistance(value) {
@@ -71,11 +78,25 @@ function sanitizeText(value) {
   return `${value}`.trim();
 }
 
+function formatStationUpdated(value) {
+  if (!value || value === "0001-01-01 00:00") {
+    return "Sem data";
+  }
+
+  return value;
+}
+
+function formatFetchedAt(date) {
+  return new Intl.DateTimeFormat("pt-PT", {
+    dateStyle: "short",
+    timeStyle: "medium",
+  }).format(date);
+}
+
 function buildAddress(station) {
   const parts = [station.Morada, station.Localidade, station.Municipio, station.Distrito]
     .filter((part) => part !== null && part !== undefined && `${part}`.trim() !== "")
-    .map((part) => `${part}`.trim())
-    .filter(Boolean);
+    .map((part) => `${part}`.trim());
 
   return parts.join(" · ") || "Morada indisponível";
 }
@@ -92,7 +113,7 @@ function buildMapLink(station) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-function setStationLink(element, station, fallbackText) {
+function setActionLink(element, station, fallbackText) {
   element.textContent = fallbackText;
   element.href = "#";
   element.setAttribute("aria-disabled", "true");
@@ -108,72 +129,18 @@ function setStationLink(element, station, fallbackText) {
   element.classList.remove("is-disabled");
 }
 
-function formatStationLabel(station) {
-  return `${sanitizeText(station.Municipio)}, ${sanitizeText(station.Distrito)}`;
-}
+function setMapsButton(station) {
+  elements.closestMapsLink.href = "#";
+  elements.closestMapsLink.setAttribute("aria-disabled", "true");
+  elements.closestMapsLink.classList.add("is-disabled");
 
-function formatFetchedAt(date) {
-  return new Intl.DateTimeFormat("pt-PT", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(date);
-}
-
-function getLatestStationUpdate(stations) {
-  const latestValue = stations
-    .map((station) => station.DataAtualizacao)
-    .filter(Boolean)
-    .sort()
-    .at(-1);
-
-  return latestValue ?? null;
-}
-
-function buildUpdatedAtText(stations) {
-  const latestStationUpdate = getLatestStationUpdate(stations);
-  const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : null;
-
-  if (latestStationUpdate && fetchedAtText) {
-    return `DGEG: ${latestStationUpdate} · obtido em ${fetchedAtText}`;
+  if (!station) {
+    return;
   }
 
-  if (latestStationUpdate) {
-    return `DGEG: ${latestStationUpdate}`;
-  }
-
-  if (fetchedAtText) {
-    return `Obtido em ${fetchedAtText}`;
-  }
-
-  return "Sem atualização";
-}
-
-async function fetchJson(path, params = {}) {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      searchParams.set(key, value);
-    }
-  });
-
-  searchParams.set("_ts", Date.now());
-  const url = `${API_BASE}${path}?${searchParams.toString()}`;
-  let response;
-
-  try {
-    response = await fetch(url, {
-      cache: "no-store",
-    });
-  } catch (error) {
-    throw new Error("Nao foi possivel ligar a DGEG. Atualize a pagina e tente novamente.");
-  }
-
-  if (!response.ok) {
-    throw new Error(`Falha ao obter dados (${response.status})`);
-  }
-
-  return response.json();
+  elements.closestMapsLink.href = buildMapLink(station);
+  elements.closestMapsLink.removeAttribute("aria-disabled");
+  elements.closestMapsLink.classList.remove("is-disabled");
 }
 
 function haversineDistanceKm(origin, destination) {
@@ -200,6 +167,32 @@ function stationFromApi(rawStation) {
   };
 }
 
+async function fetchJson(path, params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, value);
+    }
+  });
+
+  searchParams.set("_ts", Date.now());
+  const url = `${API_BASE}${path}?${searchParams.toString()}`;
+  let response;
+
+  try {
+    response = await fetch(url, { cache: "no-store" });
+  } catch (error) {
+    throw new Error("Nao foi possivel ligar a DGEG. Atualize a pagina e tente novamente.");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Falha ao obter dados (${response.status})`);
+  }
+
+  return response.json();
+}
+
 async function fetchFuelTypes() {
   const data = await fetchJson("/GetTiposCombustiveis");
 
@@ -208,14 +201,8 @@ async function fetchFuelTypes() {
   }
 
   return data.resultado
-    .filter((fuel) => fuel.fl_ViewWebSite)
-    .sort((left, right) => {
-      if (left.fl_rodoviario !== right.fl_rodoviario) {
-        return left.fl_rodoviario ? -1 : 1;
-      }
-
-      return left.Descritivo.localeCompare(right.Descritivo, "pt");
-    });
+    .filter((fuel) => fuel.fl_ViewWebSite && fuel.fl_rodoviario)
+    .sort((left, right) => left.Descritivo.localeCompare(right.Descritivo, "pt"));
 }
 
 async function fetchStationsForFuel(fuelId) {
@@ -245,12 +232,9 @@ async function fetchStationsForFuel(fuelId) {
     throw new Error("A DGEG não devolveu a lista completa de postos.");
   }
 
-  const stations = fullResult.resultado
+  return fullResult.resultado
     .map(stationFromApi)
-    .filter((station) => Number.isFinite(station.priceValue))
-    .sort((left, right) => left.priceValue - right.priceValue);
-
-  return stations;
+    .filter((station) => Number.isFinite(station.priceValue));
 }
 
 function populateFuelSelect() {
@@ -265,25 +249,19 @@ function populateFuelSelect() {
   });
 }
 
-function renderNationalList(stations) {
-  elements.nationalList.innerHTML = "";
-  const topStations = stations.slice(0, 5);
+function renderClosestPlaceholder(message) {
+  setActionLink(elements.closestName, null, message);
+  elements.closestDistance.textContent = "--";
+  elements.closestPrice.textContent = "--";
+  elements.closestUpdated.textContent = "--";
+  elements.closestAddress.textContent = "Partilhe a localização para abrir o posto recomendado no Google Maps.";
+  setMapsButton(null);
+}
 
-  if (!topStations.length) {
-    elements.nationalList.innerHTML = '<p class="empty-state">Sem resultados para este combustível.</p>';
-    return;
-  }
-
-  topStations.forEach((station, index) => {
-    const fragment = elements.nationalTemplate.content.cloneNode(true);
-    fragment.querySelector(".national-rank").textContent = `#${index + 1}`;
-    const nameLink = fragment.querySelector(".national-station-link");
-    nameLink.textContent = station.Nome;
-    nameLink.href = buildMapLink(station);
-    fragment.querySelector(".national-location").textContent = formatStationLabel(station);
-    fragment.querySelector(".national-price").textContent = formatCurrency(station.priceValue);
-    elements.nationalList.append(fragment);
-  });
+function renderNationalSnapshot(stations) {
+  const cheapestNational = [...stations].sort((left, right) => left.priceValue - right.priceValue)[0];
+  elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
+  setActionLink(elements.nationalName, cheapestNational, "Sem dados");
 }
 
 function renderNearbyList(stations) {
@@ -291,45 +269,33 @@ function renderNearbyList(stations) {
 
   if (!stations.length) {
     elements.nearbyList.innerHTML =
-      '<p class="empty-state">Nenhum posto encontrado no raio selecionado. Experimente aumentar a distância.</p>';
+      '<p class="empty-state">Sem alternativas adicionais. O posto sugerido já e o mais próximo encontrado.</p>';
     return;
   }
 
-  stations.slice(0, NEARBY_LIMIT).forEach((station) => {
+  stations.forEach((station) => {
     const fragment = elements.stationTemplate.content.cloneNode(true);
-    fragment.querySelector(".station-price").textContent = formatCurrency(station.priceValue);
-    const nameLink = fragment.querySelector(".station-name-link");
-    nameLink.textContent = station.Nome;
-    nameLink.href = buildMapLink(station);
-    fragment.querySelector(".station-distance").textContent = formatDistance(station.distanceKm);
-    fragment.querySelector(".station-meta").textContent = `${sanitizeText(station.Marca)} · ${sanitizeText(station.TipoPosto)}`;
+    fragment.querySelector(".station-name-link").textContent = station.Nome;
+    fragment.querySelector(".station-name-link").href = buildMapLink(station);
     fragment.querySelector(".station-address").textContent = buildAddress(station);
-    fragment.querySelector(".station-updated").textContent = `Atualizado em ${station.DataAtualizacao || "data indisponível"}`;
+    fragment.querySelector(".station-distance").textContent = formatDistance(station.distanceKm);
+    fragment.querySelector(".station-price").textContent = formatCurrency(station.priceValue);
+    fragment.querySelector(".station-updated").textContent = `Preço DGEG: ${formatStationUpdated(station.DataAtualizacao)}`;
     fragment.querySelector(".station-link").href = buildMapLink(station);
     elements.nearbyList.append(fragment);
   });
 }
 
 function renderWithoutLocation(stations) {
-  const cheapestNational = stations[0];
-  elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
-  setStationLink(elements.nationalName, cheapestNational, "Sem dados");
-  elements.nearbyPrice.textContent = "--";
-  setStationLink(elements.nearbyName, null, "Autorize a localização para calcular");
-  elements.closestDistance.textContent = "--";
-  setStationLink(elements.closestName, null, "Autorize a localização para calcular");
-  elements.coverageCount.textContent = "0";
-  elements.coverageDetail.textContent = "postos no raio";
-  elements.resultsSummary.textContent = "Aguardando localização";
-  elements.updatedAt.textContent = buildUpdatedAtText(stations);
-  renderNationalList(stations);
+  renderNationalSnapshot(stations);
+  renderClosestPlaceholder("A aguardar localização");
+  elements.resultsSummary.textContent = "Permita a localização para recomendar o posto mais próximo";
   elements.nearbyList.innerHTML =
-    '<p class="empty-state">Partilhe a localização para ordenar os postos por proximidade.</p>';
+    '<p class="empty-state">Assim que permitir a localização mostramos aqui mais postos próximos.</p>';
 }
 
-function renderWithLocation(stations) {
-  const cheapestNational = stations[0];
-  const enrichedStations = stations
+function enrichStationsWithDistance(stations) {
+  return stations
     .filter((station) => Number.isFinite(station.Latitude) && Number.isFinite(station.Longitude))
     .map((station) => ({
       ...station,
@@ -337,99 +303,109 @@ function renderWithLocation(stations) {
         latitude: station.Latitude,
         longitude: station.Longitude,
       }),
-    }));
+    }))
+    .sort((left, right) => left.distanceKm - right.distanceKm);
+}
 
-  const stationsWithinRadius = enrichedStations
-    .filter((station) => station.distanceKm <= state.radiusKm)
-    .sort((left, right) => {
-      if (left.priceValue === right.priceValue) {
-        return left.distanceKm - right.distanceKm;
-      }
+function renderWithLocation(stations) {
+  const closestStations = enrichStationsWithDistance(stations);
+  const closestStation = closestStations[0];
+  const alternatives = closestStations.slice(1, ALTERNATIVE_LIMIT + 1);
 
-      return left.priceValue - right.priceValue;
+  renderNationalSnapshot(stations);
+
+  if (!closestStation) {
+    renderClosestPlaceholder("Nenhum posto com coordenadas disponíveis");
+    elements.resultsSummary.textContent = "Nao foi possivel calcular postos proximos";
+    elements.nearbyList.innerHTML =
+      '<p class="empty-state">A DGEG não devolveu coordenadas suficientes para este combustível.</p>';
+    return;
+  }
+
+  setActionLink(elements.closestName, closestStation, closestStation.Nome);
+  elements.closestDistance.textContent = formatDistance(closestStation.distanceKm);
+  elements.closestPrice.textContent = formatCurrency(closestStation.priceValue);
+  elements.closestUpdated.textContent = formatStationUpdated(closestStation.DataAtualizacao);
+  elements.closestAddress.textContent = buildAddress(closestStation);
+  setMapsButton(closestStation);
+
+  elements.resultsSummary.textContent = `${Math.max(closestStations.length - 1, 0)} alternativas encontradas perto de si`;
+  renderNearbyList(alternatives);
+}
+
+async function loadStations(forceRefresh = false) {
+  const requestedFuelId = state.selectedFuelId;
+  const shouldReuseCurrent =
+    !forceRefresh &&
+    state.currentFuelId === requestedFuelId &&
+    state.currentStations.length > 0;
+
+  if (shouldReuseCurrent) {
+    return state.currentStations;
+  }
+
+  const shouldReusePending =
+    !forceRefresh &&
+    state.pendingStationsPromise &&
+    state.pendingFuelId === requestedFuelId;
+
+  if (shouldReusePending) {
+    return state.pendingStationsPromise;
+  }
+
+  state.pendingFuelId = requestedFuelId;
+  state.pendingStationsPromise = fetchStationsForFuel(requestedFuelId)
+    .then((stations) => {
+      state.currentStations = stations;
+      state.currentFuelId = requestedFuelId;
+      state.lastFetchedAt = new Date();
+      return stations;
+    })
+    .finally(() => {
+      state.pendingStationsPromise = null;
+      state.pendingFuelId = null;
     });
 
-  const closestStation = [...enrichedStations].sort((left, right) => left.distanceKm - right.distanceKm)[0];
-  const cheapestNearby = stationsWithinRadius[0];
-
-  elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
-  setStationLink(elements.nationalName, cheapestNational, "Sem dados");
-
-  elements.nearbyPrice.textContent = cheapestNearby ? formatCurrency(cheapestNearby.priceValue) : "--";
-  setStationLink(
-    elements.nearbyName,
-    cheapestNearby,
-    "Nenhum posto dentro do raio selecionado",
-  );
-
-  elements.closestDistance.textContent = closestStation ? formatDistance(closestStation.distanceKm) : "--";
-  setStationLink(elements.closestName, closestStation, "Sem dados");
-
-  elements.coverageCount.textContent = `${stationsWithinRadius.length}`;
-  elements.coverageDetail.textContent = `postos no raio de ${state.radiusKm} km`;
-  elements.resultsSummary.textContent = `${stationsWithinRadius.length} postos encontrados a menos de ${state.radiusKm} km`;
-  elements.updatedAt.textContent = buildUpdatedAtText(stations);
-
-  renderNationalList(stations);
-  renderNearbyList(stationsWithinRadius);
+  return state.pendingStationsPromise;
 }
 
 async function refreshDashboard(forceRefresh = false) {
   const selectedFuel = state.fuelTypes.find((fuel) => String(fuel.Id) === state.selectedFuelId);
   const fuelLabel = selectedFuel?.Descritivo ?? "combustível selecionado";
-  setLoadStatus(`A atualizar postos da DGEG para ${fuelLabel.toLowerCase()}...`);
+  setLoadStatus(`A atualizar dados da DGEG para ${fuelLabel.toLowerCase()}...`);
 
   try {
-    const shouldRefetch =
-      forceRefresh ||
-      state.currentFuelId !== state.selectedFuelId ||
-      state.currentStations.length === 0;
-    const stations = shouldRefetch
-      ? await fetchStationsForFuel(state.selectedFuelId)
-      : state.currentStations;
-
-    if (shouldRefetch) {
-      state.currentStations = stations;
-      state.currentFuelId = state.selectedFuelId;
-      state.lastFetchedAt = new Date();
-    }
+    const stations = await loadStations(forceRefresh);
 
     if (state.location) {
       renderWithLocation(stations);
-      setLoadStatus(
-        `Dados DGEG atualizados em ${formatFetchedAt(state.lastFetchedAt)}: ${stations.length} postos analisados para ${fuelLabel.toLowerCase()}.`,
-      );
     } else {
       renderWithoutLocation(stations);
-      setLoadStatus(
-        `Dados DGEG atualizados em ${formatFetchedAt(state.lastFetchedAt)}: ${stations.length} postos disponíveis para ${fuelLabel.toLowerCase()}.`,
-      );
     }
+
+    const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : "agora";
+    setLoadStatus(
+      `Dados DGEG atualizados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
+    );
   } catch (error) {
     setLoadStatus(error.message, true);
   }
 }
 
-function updateLocationStatus(message, isError = false) {
-  elements.locationStatus.textContent = message;
-  elements.locationStatus.style.color = isError ? "var(--danger)" : "";
-}
-
 function requestLocation() {
   if (!("geolocation" in navigator)) {
     updateLocationStatus("Este navegador não suporta geolocalização.", true);
+    setLocateButtonLabel("Localização indisponível");
     return;
   }
 
   if (!window.isSecureContext) {
-    updateLocationStatus(
-      "A geolocalização exige localhost ou HTTPS. Abra esta página num contexto seguro.",
-      true,
-    );
+    updateLocationStatus("A geolocalização exige HTTPS ou localhost.", true);
     return;
   }
 
   updateLocationStatus("A pedir acesso à sua localização...");
+  setLocateButtonLabel("A obter localização...");
 
   navigator.geolocation.getCurrentPosition(
     async ({ coords }) => {
@@ -438,17 +414,18 @@ function requestLocation() {
         longitude: coords.longitude,
       };
 
-      updateLocationStatus(
-        `Localização ativa: ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`,
-      );
+      updateLocationStatus("Localização ativa. A ordenar postos mais próximos.");
+      setLocateButtonLabel("Atualizar localização");
       await refreshDashboard();
     },
     (error) => {
       const reason =
         error.code === error.PERMISSION_DENIED
-          ? "A permissão foi recusada."
-          : "Não foi possível obter a localização.";
+          ? "Permissão recusada. Toque para permitir a localização."
+          : "Nao foi possivel obter a localização.";
       updateLocationStatus(reason, true);
+      setLocateButtonLabel("Permitir localização");
+      renderClosestPlaceholder("Permita a localização");
     },
     {
       enableHighAccuracy: true,
@@ -464,15 +441,12 @@ function bindEvents() {
     await refreshDashboard(true);
   });
 
-  elements.radiusSelect.addEventListener("change", async (event) => {
-    state.radiusKm = Number.parseInt(event.target.value, 10);
-    await refreshDashboard();
-  });
-
-  elements.locateButton.addEventListener("click", requestLocation);
   elements.refreshButton.addEventListener("click", async () => {
     await refreshDashboard(true);
   });
+
+  elements.locateButton.addEventListener("click", requestLocation);
+  elements.retryLocationButton.addEventListener("click", requestLocation);
 
   window.setInterval(() => {
     refreshDashboard(true);
@@ -480,11 +454,11 @@ function bindEvents() {
 }
 
 async function init() {
-  elements.radiusSelect.value = String(DEFAULT_RADIUS);
   bindEvents();
 
   try {
     state.fuelTypes = await fetchFuelTypes();
+
     if (!state.fuelTypes.length) {
       throw new Error("Sem combustíveis disponíveis neste momento.");
     }
@@ -494,9 +468,11 @@ async function init() {
     }
 
     populateFuelSelect();
-    await refreshDashboard();
+    requestLocation();
+    await refreshDashboard(true);
   } catch (error) {
     setLoadStatus(error.message, true);
+    updateLocationStatus("Nao foi possivel preparar a pesquisa automática.", true);
   }
 }
 

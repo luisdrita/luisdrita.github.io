@@ -4,6 +4,7 @@ const SPAIN_API_URL =
 const DEFAULT_FUEL_ID = "2101";
 const AUTO_REFRESH_MS = 300000;
 const ALTERNATIVE_LIMIT = 3;
+const MAX_PORTUGAL_STATIONS = 10000;
 
 const state = {
   fuelTypes: [],
@@ -14,12 +15,12 @@ const state = {
   pendingFuelId: null,
   portugalHoursById: new Map(),
   pendingPortugalHoursById: new Map(),
-  currentSpainStations: [],
-  currentSpainFuelKey: null,
-  pendingSpainPromise: null,
-  pendingSpainFuelKey: null,
+  currentSpainDataset: null,
+  pendingSpainDatasetPromise: null,
+  spainStationsByFuelKey: new Map(),
   lastFetchedAt: null,
   location: null,
+  refreshRequestId: 0,
 };
 
 const elements = {
@@ -185,6 +186,10 @@ function formatFetchedAt(date) {
   }).format(date);
 }
 
+function isActiveRefresh(requestId, requestedFuelId) {
+  return requestId === state.refreshRequestId && requestedFuelId === state.selectedFuelId;
+}
+
 function buildAddress(station) {
   const parts = [station.Morada, station.Localidade, station.Municipio, station.Distrito, station.Country]
     .filter((part) => part !== null && part !== undefined && `${part}`.trim() !== "")
@@ -285,6 +290,63 @@ function haversineDistanceKm(origin, destination) {
       Math.sin(lonDelta / 2) ** 2;
 
   return 2 * earthRadius * Math.asin(Math.sqrt(a));
+}
+
+function findCheapestStation(stations) {
+  let cheapestStation = null;
+
+  stations.forEach((station) => {
+    if (!Number.isFinite(station.priceValue)) {
+      return;
+    }
+
+    if (!cheapestStation || station.priceValue < cheapestStation.priceValue) {
+      cheapestStation = station;
+    }
+  });
+
+  return cheapestStation;
+}
+
+function getClosestStations(stations, limit) {
+  const closestStations = [];
+  let eligibleCount = 0;
+
+  stations.forEach((station) => {
+    if (!Number.isFinite(station.Latitude) || !Number.isFinite(station.Longitude)) {
+      return;
+    }
+
+    eligibleCount += 1;
+    const candidate = {
+      ...station,
+      distanceKm: haversineDistanceKm(state.location, {
+        latitude: station.Latitude,
+        longitude: station.Longitude,
+      }),
+    };
+
+    let insertAt = closestStations.length;
+
+    for (let index = 0; index < closestStations.length; index += 1) {
+      if (candidate.distanceKm < closestStations[index].distanceKm) {
+        insertAt = index;
+        break;
+      }
+    }
+
+    if (insertAt === closestStations.length && closestStations.length >= limit) {
+      return;
+    }
+
+    closestStations.splice(insertAt, 0, candidate);
+
+    if (closestStations.length > limit) {
+      closestStations.pop();
+    }
+  });
+
+  return { closestStations, eligibleCount };
 }
 
 function stationFromApi(rawStation) {
@@ -407,30 +469,14 @@ async function fetchFuelTypes() {
 }
 
 async function fetchStationsForFuel(fuelId) {
-  const firstPage = await fetchJson("/PesquisarPostos", {
-    idsTiposComb: fuelId,
-    qtdPorPagina: 1,
-    pagina: 1,
-  });
-
-  if (!firstPage.status) {
-    throw new Error("A DGEG não devolveu resultados válidos.");
-  }
-
-  const total = firstPage.resultado?.[0]?.Quantidade ?? firstPage.resultado?.length ?? 0;
-
-  if (!total) {
-    return [];
-  }
-
   const fullResult = await fetchJson("/PesquisarPostos", {
     idsTiposComb: fuelId,
-    qtdPorPagina: total,
+    qtdPorPagina: MAX_PORTUGAL_STATIONS,
     pagina: 1,
   });
 
   if (!fullResult.status) {
-    throw new Error("A DGEG não devolveu a lista completa de postos.");
+    throw new Error("A DGEG não devolveu resultados válidos.");
   }
 
   return fullResult.resultado
@@ -462,13 +508,7 @@ async function fetchPortugalStationHours(stationId) {
   return pending;
 }
 
-async function fetchSpainStationsForFuel(fuel) {
-  const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
-
-  if (!fuelConfig) {
-    return [];
-  }
-
+async function fetchSpainDataset() {
   let response;
 
   try {
@@ -483,9 +523,22 @@ async function fetchSpainStationsForFuel(fuel) {
 
   const data = await response.json();
 
-  return (data.ListaEESSPrecio ?? [])
+  return {
+    sourceTimestamp: sanitizeText(data.Fecha),
+    stations: data.ListaEESSPrecio ?? [],
+  };
+}
+
+function buildSpainStationsForFuel(dataset, fuel) {
+  const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
+
+  if (!fuelConfig) {
+    return [];
+  }
+
+  return dataset.stations
     .map((rawStation, index) =>
-      buildSpainStation(rawStation, index, fuelConfig, sanitizeText(data.Fecha)),
+      buildSpainStation(rawStation, index, fuelConfig, dataset.sourceTimestamp),
     )
     .filter((station) => station && Number.isFinite(station.priceValue));
 }
@@ -513,7 +566,7 @@ function renderClosestPlaceholder(message) {
 }
 
 function renderNationalSnapshot(stations) {
-  const cheapestNational = [...stations].sort((left, right) => left.priceValue - right.priceValue)[0];
+  const cheapestNational = findCheapestStation(stations);
   elements.nationalPrice.textContent = cheapestNational ? formatCurrency(cheapestNational.priceValue) : "--";
   setActionLink(elements.nationalName, cheapestNational, "Sem dados");
 }
@@ -550,23 +603,10 @@ function renderWithoutLocation(stations) {
     '<p class="empty-state">Assim que permitir a localização mostramos aqui mais postos próximos.</p>';
 }
 
-function enrichStationsWithDistance(stations) {
-  return stations
-    .filter((station) => Number.isFinite(station.Latitude) && Number.isFinite(station.Longitude))
-    .map((station) => ({
-      ...station,
-      distanceKm: haversineDistanceKm(state.location, {
-        latitude: station.Latitude,
-        longitude: station.Longitude,
-      }),
-    }))
-    .sort((left, right) => left.distanceKm - right.distanceKm);
-}
-
 function renderWithLocation(stations) {
-  const closestStations = enrichStationsWithDistance(stations);
+  const { closestStations, eligibleCount } = getClosestStations(stations, ALTERNATIVE_LIMIT + 1);
   const closestStation = closestStations[0];
-  const alternatives = closestStations.slice(1, ALTERNATIVE_LIMIT + 1);
+  const alternatives = closestStations.slice(1);
 
   renderNationalSnapshot(stations);
 
@@ -586,7 +626,7 @@ function renderWithLocation(stations) {
   setClosestHours(closestStation, "Horário: a carregar...");
   setMapsButton(closestStation);
 
-  elements.resultsSummary.textContent = `${Math.max(closestStations.length - 1, 0)} alternativas encontradas perto de si`;
+  elements.resultsSummary.textContent = `${Math.max(eligibleCount - 1, 0)} alternativas encontradas perto de si`;
   renderNearbyList(alternatives);
   void ensureWorkingHoursForVisibleStations([closestStation, ...alternatives]);
 }
@@ -652,48 +692,50 @@ async function loadSpainStations(fuel, forceRefresh = false) {
   const fuelConfig = getSpainFuelConfig(fuel.Descritivo);
 
   if (!fuelConfig) {
-    state.currentSpainStations = [];
-    state.currentSpainFuelKey = null;
     return [];
   }
 
   const requestedFuelKey = fuelConfig.key;
-  const shouldReuseCurrent =
-    !forceRefresh &&
-    state.currentSpainFuelKey === requestedFuelKey &&
-    state.currentSpainStations.length > 0;
 
-  if (shouldReuseCurrent) {
-    return state.currentSpainStations;
+  if (!forceRefresh && state.spainStationsByFuelKey.has(requestedFuelKey)) {
+    return state.spainStationsByFuelKey.get(requestedFuelKey);
   }
 
-  const shouldReusePending =
-    !forceRefresh &&
-    state.pendingSpainPromise &&
-    state.pendingSpainFuelKey === requestedFuelKey;
-
-  if (shouldReusePending) {
-    return state.pendingSpainPromise;
+  if (!forceRefresh && state.pendingSpainDatasetPromise) {
+    const dataset = await state.pendingSpainDatasetPromise;
+    const stations = buildSpainStationsForFuel(dataset, fuel);
+    state.spainStationsByFuelKey.set(requestedFuelKey, stations);
+    return stations;
   }
 
-  state.pendingSpainFuelKey = requestedFuelKey;
-  state.pendingSpainPromise = fetchSpainStationsForFuel(fuel)
-    .then((stations) => {
-      state.currentSpainStations = stations;
-      state.currentSpainFuelKey = requestedFuelKey;
-      return stations;
+  if (!forceRefresh && state.currentSpainDataset) {
+    const stations = buildSpainStationsForFuel(state.currentSpainDataset, fuel);
+    state.spainStationsByFuelKey.set(requestedFuelKey, stations);
+    return stations;
+  }
+
+  state.pendingSpainDatasetPromise = fetchSpainDataset()
+    .then((dataset) => {
+      state.currentSpainDataset = dataset;
+      state.spainStationsByFuelKey.clear();
+      return dataset;
     })
     .finally(() => {
-      state.pendingSpainPromise = null;
-      state.pendingSpainFuelKey = null;
+      state.pendingSpainDatasetPromise = null;
     });
 
-  return state.pendingSpainPromise;
+  const dataset = await state.pendingSpainDatasetPromise;
+  const stations = buildSpainStationsForFuel(dataset, fuel);
+  state.spainStationsByFuelKey.set(requestedFuelKey, stations);
+  return stations;
 }
 
 async function refreshDashboard(forceRefresh = false) {
   const selectedFuel = state.fuelTypes.find((fuel) => String(fuel.Id) === state.selectedFuelId);
   const fuelLabel = selectedFuel?.Descritivo ?? "combustível selecionado";
+  const requestedFuelId = state.selectedFuelId;
+  const requestId = state.refreshRequestId + 1;
+  state.refreshRequestId = requestId;
   setLoadStatus(`A atualizar dados da DGEG para ${fuelLabel.toLowerCase()}...`);
   setClosestLoading(
     Boolean(state.location),
@@ -701,22 +743,41 @@ async function refreshDashboard(forceRefresh = false) {
   );
 
   try {
-    const portugalStations = await loadStations(forceRefresh);
+    const portugalStationsPromise = loadStations(forceRefresh);
+    const spainStationsPromise =
+      state.location && selectedFuel
+        ? loadSpainStations(selectedFuel, forceRefresh).catch(() => [])
+        : Promise.resolve([]);
 
     if (state.location) {
-      let spainStations = [];
+      const portugalStations = await portugalStationsPromise;
 
-      if (selectedFuel) {
-        try {
-          spainStations = await loadSpainStations(selectedFuel, forceRefresh);
-        } catch (error) {
-          spainStations = [];
-        }
+      if (!isActiveRefresh(requestId, requestedFuelId)) {
+        return;
       }
 
-      renderWithLocation([...portugalStations, ...spainStations]);
+      renderWithLocation(portugalStations);
+      setClosestLoading(false);
+
+      if (selectedFuel) {
+        const spainStations = await spainStationsPromise;
+
+        if (spainStations.length && isActiveRefresh(requestId, requestedFuelId)) {
+          renderWithLocation([...portugalStations, ...spainStations]);
+        }
+      }
     } else {
+      const portugalStations = await portugalStationsPromise;
+
+      if (!isActiveRefresh(requestId, requestedFuelId)) {
+        return;
+      }
+
       renderWithoutLocation(portugalStations);
+    }
+
+    if (!isActiveRefresh(requestId, requestedFuelId)) {
+      return;
     }
 
     const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : "agora";
@@ -724,9 +785,13 @@ async function refreshDashboard(forceRefresh = false) {
       `Dados oficiais atualizados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
     );
   } catch (error) {
-    setLoadStatus(error.message, true);
+    if (isActiveRefresh(requestId, requestedFuelId)) {
+      setLoadStatus(error.message, true);
+    }
   } finally {
-    setClosestLoading(false);
+    if (isActiveRefresh(requestId, requestedFuelId)) {
+      setClosestLoading(false);
+    }
   }
 }
 
@@ -768,9 +833,9 @@ function requestLocation() {
       setClosestLoading(false);
     },
     {
-      enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 300000,
+      enableHighAccuracy: false,
+      timeout: 8000,
+      maximumAge: 600000,
     },
   );
 }

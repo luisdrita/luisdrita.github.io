@@ -295,6 +295,12 @@ button:focus,
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.timestamp-line {
+  color: var(--accent);
+  font-family: "Sora", sans-serif;
+  font-size: 0.9rem;
+}
+
 .status-line,
 .microcopy,
 .section-note,
@@ -413,7 +419,7 @@ button:focus,
 
 .primary-metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin-top: 18px;
 }

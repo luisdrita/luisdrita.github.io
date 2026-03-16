@@ -47,13 +47,13 @@ const elements = {
   retryLocationButton: document.querySelector("#retry-location-button"),
   retryLocationButtonLabel: document.querySelector("#retry-location-button-label"),
   locationStatus: document.querySelector("#location-status"),
+  fetchedAt: document.querySelector("#fetched-at"),
   loadStatus: document.querySelector("#load-status"),
   closestLoading: document.querySelector("#closest-loading"),
   closestName: document.querySelector("#closest-name"),
   closestCountry: document.querySelector("#closest-country"),
   closestDistance: document.querySelector("#closest-distance"),
   closestPrice: document.querySelector("#closest-price"),
-  closestUpdated: document.querySelector("#closest-updated"),
   closestAddress: document.querySelector("#closest-address"),
   closestHours: document.querySelector("#closest-hours"),
   closestMapsLink: document.querySelector("#closest-maps-link"),
@@ -63,6 +63,7 @@ const elements = {
 };
 
 function setLoadStatus(message, isError = false) {
+  elements.loadStatus.hidden = !message;
   elements.loadStatus.textContent = message;
   elements.loadStatus.style.color = isError ? "var(--danger)" : "";
 }
@@ -113,33 +114,6 @@ function sanitizeText(value) {
   }
 
   return `${value}`.trim();
-}
-
-function formatStationUpdated(value) {
-  if (!value || value === "0001-01-01 00:00") {
-    return "Sem data";
-  }
-
-  const normalizedValue = `${value}`.trim();
-  const isoMatch = normalizedValue.match(
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/,
-  );
-
-  if (isoMatch) {
-    const [, year, month, day, hours, minutes] = isoMatch;
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-  }
-
-  const localMatch = normalizedValue.match(
-    /^(\d{2})\/(\d{2})\/(\d{4})[ T](\d{2}):(\d{2})(?::\d{2})?$/,
-  );
-
-  if (localMatch) {
-    const [, day, month, year, hours, minutes] = localMatch;
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-  }
-
-  return normalizedValue.replace(/:\d{2}$/, "");
 }
 
 function formatPortugalWorkingHours(schedule) {
@@ -225,6 +199,12 @@ function formatFetchedAt(date) {
   }).format(date);
 }
 
+function setFetchedAtStatus(date) {
+  elements.fetchedAt.textContent = date
+    ? `Preços recolhidos em ${formatFetchedAt(date)}`
+    : "Preços recolhidos em --";
+}
+
 function isActiveRefresh(requestId, requestedFuelId) {
   return requestId === state.refreshRequestId && requestedFuelId === state.selectedFuelId;
 }
@@ -263,17 +243,24 @@ function setCountryPill(element, country) {
 }
 
 function buildAddress(station) {
-  const parts = [
-    station.Morada,
-    station.Localidade,
-    station.Municipio,
-    station.Distrito,
-    getCountryLabel(station.Country),
-  ]
-    .filter((part) => part !== null && part !== undefined && `${part}`.trim() !== "")
-    .map((part) => `${part}`.trim());
+  const street = `${station.Morada ?? ""}`.trim();
+  const area = [`${station.Localidade ?? ""}`.trim(), `${station.Municipio ?? ""}`.trim()]
+    .find((part) => part && part !== "Sem informação") ?? "";
 
-  return parts.join(" · ") || "Morada indisponível";
+  const parts = [];
+
+  if (street && street !== "Sem informação") {
+    parts.push(street);
+  }
+
+  if (
+    area &&
+    !parts.some((part) => part.toLowerCase().includes(area.toLowerCase()))
+  ) {
+    parts.push(area);
+  }
+
+  return parts.join(" · ") || "Localização indisponível";
 }
 
 function buildMapLink(station) {
@@ -713,7 +700,6 @@ function renderClosestPlaceholder(message) {
   setCountryPill(elements.closestCountry, null);
   elements.closestDistance.textContent = "--";
   elements.closestPrice.textContent = "--";
-  elements.closestUpdated.textContent = "--";
   elements.closestAddress.textContent =
     "Autorize a sua localização para comparar as 3 melhores opções em Portugal e Espanha e abrir a melhor no Google Maps.";
   setClosestHours(null);
@@ -771,7 +757,6 @@ function renderWithLocation(stations) {
   setCountryPill(elements.closestCountry, closestStation.Country);
   elements.closestDistance.textContent = `A ${formatDistance(closestStation.distanceKm)} de si`;
   elements.closestPrice.textContent = formatCurrency(closestStation.priceValue);
-  elements.closestUpdated.textContent = formatStationUpdated(closestStation.DataAtualizacao);
   elements.closestAddress.textContent = buildAddress(closestStation);
   setClosestHours(closestStation, "Horário: a carregar...");
   setMapsButton(closestStation);
@@ -893,7 +878,7 @@ async function refreshDashboard(forceRefresh = false) {
   const requestedFuelId = state.selectedFuelId;
   const requestId = state.refreshRequestId + 1;
   state.refreshRequestId = requestId;
-  setLoadStatus(`A carregar preços oficiais para ${fuelLabel.toLowerCase()}...`);
+  setLoadStatus("A carregar preços oficiais. Aguarde.");
   setClosestLoading(
     Boolean(state.location),
     `A escolher as 3 melhores opções para ${fuelLabel.toLowerCase()}. Aguarde pelo resultado final...`,
@@ -937,10 +922,8 @@ async function refreshDashboard(forceRefresh = false) {
       return;
     }
 
-    const fetchedAtText = state.lastFetchedAt ? formatFetchedAt(state.lastFetchedAt) : "agora";
-    setLoadStatus(
-      `Preços oficiais carregados em ${fetchedAtText} para ${fuelLabel.toLowerCase()}.`,
-    );
+    setFetchedAtStatus(state.lastFetchedAt);
+    setLoadStatus("");
   } catch (error) {
     if (isActiveRefresh(requestId, requestedFuelId)) {
       setLoadStatus(error.message, true);
@@ -1031,6 +1014,7 @@ function bindEvents() {
 async function init() {
   bindEvents();
   void requestLocation();
+  setFetchedAtStatus(null);
 
   try {
     state.fuelTypes = await fetchFuelTypes();

@@ -5,6 +5,21 @@ const DEFAULT_FUEL_ID = "2101";
 const AUTO_REFRESH_MS = 300000;
 const ALTERNATIVE_LIMIT = 3;
 const MAX_PORTUGAL_STATIONS = 10000;
+const LOCATION_ERROR_CODES = {
+  PERMISSION_DENIED: 1,
+  POSITION_UNAVAILABLE: 2,
+  TIMEOUT: 3,
+};
+const FAST_LOCATION_OPTIONS = {
+  enableHighAccuracy: false,
+  timeout: 8000,
+  maximumAge: 600000,
+};
+const FALLBACK_LOCATION_OPTIONS = {
+  enableHighAccuracy: true,
+  timeout: 15000,
+  maximumAge: 0,
+};
 
 const state = {
   fuelTypes: [],
@@ -20,6 +35,7 @@ const state = {
   spainStationsByFuelKey: new Map(),
   lastFetchedAt: null,
   location: null,
+  locationRequestId: 0,
   refreshRequestId: 0,
 };
 
@@ -468,6 +484,61 @@ async function fetchFuelTypes() {
     .sort((left, right) => left.Descritivo.localeCompare(right.Descritivo, "pt"));
 }
 
+function getCurrentBrowserPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+async function getGeolocationPermissionState() {
+  if (!navigator.permissions?.query) {
+    return null;
+  }
+
+  try {
+    const permissionStatus = await navigator.permissions.query({ name: "geolocation" });
+    return permissionStatus.state;
+  } catch (error) {
+    return null;
+  }
+}
+
+function shouldRetryLocationRequest(error) {
+  return (
+    error?.code === LOCATION_ERROR_CODES.POSITION_UNAVAILABLE ||
+    error?.code === LOCATION_ERROR_CODES.TIMEOUT
+  );
+}
+
+function getLocationErrorMessage(error) {
+  if (error?.code === LOCATION_ERROR_CODES.PERMISSION_DENIED) {
+    return "A localização está bloqueada no browser. Ative a permissão do site e toque em Permitir localização.";
+  }
+
+  if (error?.code === LOCATION_ERROR_CODES.POSITION_UNAVAILABLE) {
+    return "O dispositivo não conseguiu determinar a localização. Ligue GPS, Wi-Fi ou dados móveis e tente novamente.";
+  }
+
+  if (error?.code === LOCATION_ERROR_CODES.TIMEOUT) {
+    return "A localização demorou demasiado. Tente novamente num local com melhor sinal de GPS ou rede.";
+  }
+
+  return "Nao foi possivel obter a localização.";
+}
+
+async function resolveBrowserLocation() {
+  try {
+    return await getCurrentBrowserPosition(FAST_LOCATION_OPTIONS);
+  } catch (error) {
+    if (!shouldRetryLocationRequest(error)) {
+      throw error;
+    }
+
+    updateLocationStatus("A localização demorou. A tentar novamente com maior precisão...");
+    return getCurrentBrowserPosition(FALLBACK_LOCATION_OPTIONS);
+  }
+}
+
 async function fetchStationsForFuel(fuelId) {
   const fullResult = await fetchJson("/PesquisarPostos", {
     idsTiposComb: fuelId,
@@ -795,7 +866,7 @@ async function refreshDashboard(forceRefresh = false) {
   }
 }
 
-function requestLocation() {
+async function requestLocation() {
   if (!("geolocation" in navigator)) {
     updateLocationStatus("Este navegador não suporta geolocalização.", true);
     setLocateButtonLabel("Localização indisponível");
@@ -807,37 +878,58 @@ function requestLocation() {
     return;
   }
 
-  updateLocationStatus("A pedir acesso à sua localização...");
+  const requestId = state.locationRequestId + 1;
+  state.locationRequestId = requestId;
+  const permissionState = await getGeolocationPermissionState();
+
+  if (requestId !== state.locationRequestId) {
+    return;
+  }
+
+  if (permissionState === "denied") {
+    updateLocationStatus(
+      "A localização está bloqueada nas permissões do browser para este site. Ative-a e tente novamente.",
+      true,
+    );
+    setLocateButtonLabel("Permitir localização");
+    renderClosestPlaceholder("Permita a localização");
+    return;
+  }
+
+  updateLocationStatus(
+    permissionState === "granted"
+      ? "A obter a sua localização..."
+      : "A pedir acesso à sua localização...",
+  );
   setLocateButtonLabel("A obter localização...");
   setClosestLoading(true, "A obter a sua localização...");
 
-  navigator.geolocation.getCurrentPosition(
-    async ({ coords }) => {
-      state.location = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      };
+  try {
+    const { coords } = await resolveBrowserLocation();
 
-      updateLocationStatus("Localização ativa. A ordenar postos mais próximos.");
-      setLocateButtonLabel("Atualizar localização");
-      await refreshDashboard();
-    },
-    (error) => {
-      const reason =
-        error.code === error.PERMISSION_DENIED
-          ? "Permissão recusada. Toque para permitir a localização."
-          : "Nao foi possivel obter a localização.";
-      updateLocationStatus(reason, true);
+    if (requestId !== state.locationRequestId) {
+      return;
+    }
+
+    state.location = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    };
+
+    updateLocationStatus("Localização ativa. A ordenar postos mais próximos.");
+    setLocateButtonLabel("Atualizar localização");
+    await refreshDashboard();
+  } catch (error) {
+    if (requestId === state.locationRequestId) {
+      updateLocationStatus(getLocationErrorMessage(error), true);
       setLocateButtonLabel("Permitir localização");
       renderClosestPlaceholder("Permita a localização");
+    }
+  } finally {
+    if (requestId === state.locationRequestId) {
       setClosestLoading(false);
-    },
-    {
-      enableHighAccuracy: false,
-      timeout: 8000,
-      maximumAge: 600000,
-    },
-  );
+    }
+  }
 }
 
 function bindEvents() {
@@ -873,7 +965,7 @@ async function init() {
     }
 
     populateFuelSelect();
-    requestLocation();
+    void requestLocation();
     await refreshDashboard(true);
   } catch (error) {
     setLoadStatus(error.message, true);
